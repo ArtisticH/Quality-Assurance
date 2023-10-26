@@ -242,6 +242,55 @@ After you do all that, tell your express app to use `passport.initialize()` and 
 
 ***
 
+const session = require('express-session');
+const passport = require('passport');
+
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+***
+
+
+1. **passport.initialize():**
+
+passport.initialize()는 Passport.js를 초기화하는 미들웨어입니다.
+Passport.js는 사용자 인증 및 인가를 처리하는 데 사용되며, 이를 Express.js 애플리케이션과 함께 사용하려면 초기화해야 합니다.
+이 미들웨어는 요청 처리 과정에서 Passport.js가 사용될 수 있도록 Passport 객체를 설정하고 초기화합니다. 즉, Passport.js를 Express.js 애플리케이션에 연결하는 역할을 합니다.
+
+2. **passport.session():**
+
+passport.session()은 세션을 사용하는 Passport.js 미들웨어입니다.
+Passport.js는 세션을 통해 사용자의 로그인 상태를 유지하고 사용자 식별을 관리합니다. passport.session()은 세션 데이터를 처리하고 이 데이터를 Passport.js에 제공합니다.
+이 미들웨어는 요청에서 세션을 사용할 수 있도록 설정하고, Passport.js가 사용자 세션을 유지하고 관리할 수 있게 합니다.  
+
+3. **secret: process.env.SESSION_SECRET:**
+
+secret은 세션 데이터를 서명할 때 사용하는 비밀 키입니다.
+process.env.SESSION_SECRET은 환경 변수로부터 비밀 키를 가져오는 것을 의미합니다. 비밀 키는 세션 데이터를 보호하고 위조를 방지하는 데 사용됩니다. 보안상 중요한 옵션입니다.
+
+4. **resave: true:**
+
+resave는 세션 데이터가 변경되지 않더라도 세션을 다시 저장할지 여부를 나타냅니다.
+true로 설정하면 세션 데이터가 변경되지 않더라도 세션이 요청마다 다시 저장됩니다. 일반적으로 true로 설정하는 것이 좋습니다.
+
+5. **saveUninitialized: true:**
+
+saveUninitialized는 초기화되지 않은 세션을 저장할지 여부를 나타냅니다.
+true로 설정하면 초기화되지 않은 세션도 저장됩니다. 초기화되지 않은 세션은 처음 요청에서 생성되고 사용자가 로그인과 같은 동작을 하기 전까지 비어 있는 상태로 남게 됩니다.
+
+6. **cookie: { secure: false }:**
+
+cookie 객체는 클라이언트에 저장되는 세션 쿠키에 대한 설정을 제공합니다.
+secure: false로 설정하면 세션 쿠키가 안전하지 않은 연결(HTTPS가 아닌 연결)에서도 사용될 수 있도록 허용합니다. true로 설정하면 세션 쿠키는 HTTPS 연결에서만 전송됩니다. 이것은 보안 관련 옵션으로, 보통 개발 환경에서는 false로 설정하고 프로덕션 환경에서는 true로 설정합니다.
+
+***
+
 패스포트를 사용해 사용자들이 자신의 계정을 만들고 로그인할 수 있다. 이 작업을 할 때 세션을 다루는데, 세션은 서버에서 사용자에 대한 정보를 저장하고, 그 정보를 사용해 사용자를 식별하는 방법이다.  
 
 익스프레스 세션을 사용하면 세션 ID를 사용자의 컴퓨터에 작은 정보 조각으로 저장하고, 이 ID를 사용해 서버에서 사용자와 관련된 정보를 찾을 수 있다. 이렇게 하면 사용자의 계정 정보를 사용자의 컴퓨터에 저장하지 않고도 서버에서 정보를 안전하게 다룰 수 있다.  
@@ -292,4 +341,44 @@ http 프로토콜은 stateless이고, 이는 서버로 가는 모든 요청이 �
 
 브라우저에 쿠키를 저장한 후 그 해당 웹사이트를 방문할 때마다 브라우저는 해당 쿠키도 요쳥과 함께 보낸다. 쿠키는 인증 뿐만 아니라 여러 가지 정보를 저장할 수 있다. 만약 웹사이트 언어 설정을 바꾸면 서버는 쿠키를 주고, 바꾼 언어를 저장한다.  
 
+***
+
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+
+const app = express();
+const session = require('express-session');
+const passport = require('passport');
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.route('/').get((req, res) => {
+  res.render('index', { title: 'Hello', message: 'Please log in' });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
+
+## Serialization of a User Object
 
