@@ -511,3 +511,113 @@ myDB(async client => {
 // app.listen out here...
 ```
 Be sure to uncomment the `myDataBase` code in `deserializeUser`, and edit your `done(null, null)` to include the `doc`.
+
+***
+
+📝 server.js
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+
+const app = express();
+const session = require('express-session');
+const passport = require('passport');
+const ObjectID = require('mongodb').ObjectID;
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  // Be sure to change the title
+  app.route('/').get((req, res) => {
+    // Change the response to render the Pug template
+    res.render('index', {
+      title: 'Connected to Database',
+      message: 'Please login'
+    });
+  });
+
+  // Serialization and deserialization here...
+  passport.serializeUser((user, done) => {
+    done(null, user._id);
+  });
+
+  passport.deserializeUser((id, done) => {
+    myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+    done(null, doc);
+    });
+  });
+
+  // Be sure to add this...
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
+
+MONGO_URI='mongodb+srv://<>:<>@cluster0.agb0oy4.mongodb.net/?retryWrites=true&w=majority'
+
+📝 connection.js
+```node.js
+// Do not change this file
+require('dotenv').config();
+const { MongoClient } = require('mongodb');
+
+async function main(callback) {
+    const URI = process.env.MONGO_URI; // Declare MONGO_URI in your .env file
+    const client = new MongoClient(URI, { useNewUrlParser: true, useUnifiedTopology: true });
+
+    try {
+        // Connect to the MongoDB cluster
+        await client.connect();
+
+        // Make the appropriate DB calls
+        await callback(client);
+
+    } catch (e) {
+        // Catch any errors
+        console.error(e);
+        throw new Error('Unable to Connect to Database')
+    }
+}
+
+module.exports = main;
+```
+***
+
+```node.js
+const myDataBase = await client.db('database').collection('users'); 
+```
+1. client: 이것은 MongoDB 클라이언트 객체입니다. MongoDB 클라이언트는 MongoDB 서버와 통신하고 데이터베이스 작업을 수행하는 데 사용됩니다.
+
+2. client.db('database'): 이 부분은 'database'라는 데이터베이스에 연결하는 코드입니다. MongoDB는 여러 데이터베이스를 지원하며 이 코드는 'database'라는 데이터베이스에 연결하려는 것을 나타냅니다.
+
+3. .collection('users'): 이 부분은 'users'라는 컬렉션(데이터 테이블과 유사한 개념)을 가리키는 코드입니다. MongoDB는 데이터를 컬렉션 단위로 구성하며, 이 코드는 'users' 컬렉션에 연결하려는 것을 나타냅니다.
+
+따라서 이 코드는 MongoDB 클라이언트를 사용하여 'database' 데이터베이스 내의 'users' 컬렉션을 가리키는 데이터베이스 객체를 가져온다고 해석할 수 있습니다.
+
+## Authentication Strategies
