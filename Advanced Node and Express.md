@@ -428,3 +428,86 @@ The `deserializeUser` will throw an error until you set up the database connecti
 - 에러
 - 전체 사용자 객체
 deserializeUser 함수는 주어진 고유한 키(사용자 ID)를 사용하여 데이터베이스에서 해당 사용자를 찾아서 가져와야 합니다. 그 후, 가져온 사용자 객체를 콜백 함수를 통해 Passport에 반환합니다.
+
+***
+
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+
+const app = express();
+const session = require('express-session');
+const passport = require('passport');
+const ObjectID = require('mongodb').ObjectID;
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(passport.initialize());
+app.use(passport.session());
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.route('/').get((req, res) => {
+  res.render('index', { title: 'Hello', message: 'Please log in' });
+});
+
+
+passport.serializeUser((user, done) => {
+  done(null, user._id);
+});
+
+passport.deserializeUser((id, done) => {
+  // myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+  done(null, null);
+  // });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
+
+## Implement the Serialization of a Passport User
+
+You are not loading an actual user object since the database is not set up. Connect to the database once, when you start the server, and keep a persistent connection for the full life-cycle of the app. To do this, add your database's connection string (for example: `mongodb+srv://<username>:<password>@cluster0-jvwxi.mongodb.net/?retryWrites=true&w=majority`) to the environment variable `MONGO_URI`. This is used in the `connection.js` file.
+
+If you are having issues setting up a free database on MongoDB Atlas, check out this tutorial.
+
+Now you want to connect to your database, then start listening for requests. The purpose of this is to not allow requests before your database is connected or if there is a database error. To accomplish this, encompass your serialization and app routes in the following code:
+```node.js
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  // Be sure to change the title
+  app.route('/').get((req, res) => {
+    // Change the response to render the Pug template
+    res.render('index', {
+      title: 'Connected to Database',
+      message: 'Please login'
+    });
+  });
+
+  // Serialization and deserialization here...
+
+  // Be sure to add this...
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+// app.listen out here...
+```
+Be sure to uncomment the `myDataBase` code in `deserializeUser`, and edit your `done(null, null)` to include the `doc`.
