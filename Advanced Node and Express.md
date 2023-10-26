@@ -219,5 +219,71 @@ p=user
 <p id="pug-variable">Hello, World!</p>
 ```
 
+## Set up Passport
 
+It's time to set up Passport so you can finally start allowing a user to register or log in to an account. In addition to Passport, you will use Express-session to handle sessions. Express-session has a ton of advanced features you can use, but for now you are just going to use the basics. Using this middleware saves the session id as a cookie in the client, and allows us to access the session data using that id on the server. This way, you keep personal account information out of the cookie used by the client to tell to your server clients are authenticated and keep the key to access the data stored on the server.
+
+`passport@~0.4.1` and `express-session@~1.17.1` are already installed, and are both listed as dependencies in your `package.json` file.
+
+You will need to set up the session settings and initialize Passport. First, create the variables `session` and `passport` to require `express-session` and `passport` respectively.
+
+Then, set up your Express app to use the session by defining the following options:
+```node.js
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+```
+Be sure to add `SESSION_SECRET` to your `.env` file, and give it a random value. This is used to compute the hash used to encrypt your cookie!
+
+After you do all that, tell your express app to use `passport.initialize()` and `passport.session()`.
+
+***
+
+패스포트를 사용해 사용자들이 자신의 계정을 만들고 로그인할 수 있다. 이 작업을 할 때 세션을 다루는데, 세션은 서버에서 사용자에 대한 정보를 저장하고, 그 정보를 사용해 사용자를 식별하는 방법이다.  
+
+익스프레스 세션을 사용하면 세션 ID를 사용자의 컴퓨터에 작은 정보 조각으로 저장하고, 이 ID를 사용해 서버에서 사용자와 관련된 정보를 찾을 수 있다. 이렇게 하면 사용자의 계정 정보를 사용자의 컴퓨터에 저장하지 않고도 서버에서 정보를 안전하게 다룰 수 있다.  
+
+*** 
+
+익스프레스-세션은 세션 데이터를 처리하기 위한 미들웨어 중 하나이며, 클라이언트 측에 세션 ID를 쿠키로 저장하고 이 ID를 사용하여 서버에서 세션 데이터에 액세스할 수 있게 해줍니다. 이렇게 함으로써, 클라이언트가 서버에 인증되었음을 나타내는 데 사용되는 쿠키에는 개인 계정 정보가 들어가지 않고, 서버에서 데이터에 액세스하기 위한 키를 안전하게 보관할 수 있게 됩니다. 이는 보안과 인증에 관련된 웹 애플리케이션 개발에서 중요한 역할을 합니다.
+
+***
+
+로그인 프로세스에서 클라이언트와 서버 간의 정보 교환은 일반적으로 다음과 같은 단계로 이루어집니다. 아래의 상세 설명은 Express.js와 Passport.js와 같은 웹 애플리케이션 프레임워크와 라이브러리를 사용하는 일반적인 시나리오를 기반으로 합니다:
+
+1. 사용자 로그인 페이지 표시
+- 클라이언트가 로그인 페이지를 요청
+- 서버는 클라이언트에게 로그인 페이지를 렌더링하기 위한 HTML을 제공
+2. 사용자 인증 요청
+- 사용자가 로그인 정보를 로그인 페이지에 입력하고, 로그인 버튼을 클릭
+- 클라이언트는 이 정보를 서버로 POST 요청을 보낸다.
+3. 서버 측 인증
+- 서버는 클라이언트로부터 받은 로그인 정보를 검증하고, 사용자가 유효한지 확인
+- 만약 인증이 성공하면, 서버는 클라이언트에게 세션을 생성하고, 세션 ID를 클라이언트에게 전달. 이 세션 ID는 일반적으로 쿠키로 저장된다.
+4. 클라이언트 측 응답
+- 클라이언트는 세션 ID를 쿠키로 저장하고, 로그인 성공 페이지로 리디렉션
+5. 세션 유지
+- 클라이언트응 이후 요청에서 세션 ID를 함께 서버에 전달. 이 세션 ID를 통해 서버는 해당 클라이언트의 세션 정보를 식별
+6. 보호된 페이지 접근
+- 클라이언트가 보호된 페이지에 액세스하려고 시도하면, 클라이언트의 세션 ID가 서버로 전송된다.
+- 서버는 세션 ID를 사용하여 해당 클라이언트가 인증되었는지 확인하고, 접근 권한을 부여하거나 거부한다.
+7. 세션 만료 및 로그아웃
+- 세션은 시간이 지남에 따라 만료될 수 있으며, 로그아웃 시에는 세션을 무효화한다.
+
+***
+
+**세션이란?**  
+
+세션은 웹 애플리케이션에서 사용자 관련 정보를 유지하고 관리하기 위한 방법 중 하나입니다. 세션은 일시적인 데이터 저장 공간으로, 사용자가 웹 애플리케이션과 상호 작용하는 동안 정보를 보관하는 데 사용됩니다. 일반적으로 서버 측에서 세션 데이터를 저장하며, 클라이언트와 서버 간의 상호 작용을 추적하고 사용자를 식별하는 데 도움을 줍니다. 예를 들어, 사용자가 로그인한 후에 웹 페이지를 탐색하는 동안 세션을 통해 사용자의 로그인 상태를 유지할 수 있습니다.
+
+***
+
+**쿠키?**
+
+쿠키는 웹 브라우저와 웹 서버 간에 정보를 교환하기 위한 작은 데이터 조각입니다. 이 데이터는 클라이언트(웹 브라우저) 측에 저장되며, 웹 서버에서 전송하고 응답을 받을 때 사용됩니다. 쿠키는 클라이언트 측에서 지속적으로 저장될 수 있으며, 사용자의 브라우징 세션 간에 정보를 유지하거나 사용자를 식별하는 데 사용됩니다.
+
+예를 들어, 웹 사이트에 로그인하면 서버는 클라이언트에게 고유한 세션 ID와 같은 정보를 쿠키로 전달합니다. 그 후에 사용자가 다른 페이지로 이동할 때, 브라우저는 이 쿠키를 함께 서버에 다시 전송하여 사용자를 인증하고 이전 상태나 로그인 정보를 복원할 수 있습니다. 쿠키는 웹 애플리케이션에서 세션 관리, 로그인 유지, 사용자 추적 및 기타 다양한 작업에 사용됩니다
 
