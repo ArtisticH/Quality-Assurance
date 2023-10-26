@@ -926,3 +926,372 @@ passport.authenticate은 인증 처리에 사용되며, ensureAuthenticated는 �
 
 ## How to Put a Profile Together
 
+Now that you can ensure the user accessing the `/profile` is authenticated, you can use the information contained in `req.user` on your page.
+
+Pass an object containing the property `username` and value of `req.user.username` as the second argument for the `render` method of the profile view.
+
+Then, go to your `profile.pug` view, and add the following line below the existing `h1` element, and at the same level of indentation:
+```pug
+h2.center#welcome Welcome, #{username}!
+```
+This creates an `h2` element with the class `center` and id `welcome` containing the text `Welcome, ` followed by the username.
+
+Also, in `profile.pug`, add a link referring to the `/logout` route, which will host the logic to unauthenticate a user:
+```pug
+a(href='/logout') Logout
+```
+***
+```
+html
+  head
+    title FCC Advanced Node and Express
+    meta(name='description', content='Profile')
+    meta(charset='utf-8')
+    meta(http-equiv='X-UA-Compatible', content='IE=edge')
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    link(rel='stylesheet', href='/public/style.css')
+  body
+    h1.border.center FCC Advanced Node and Express Profile
+    h2.center#welcome Welcome, #{username}!
+    a(href='/logout') Logout
+
+```
+***
+
+```node.js
+app.route('/profile').get(ensureAuthenticated, (req,res) => {
+    res.render('profile', { username: req.user.username });
+  });
+```
+
+## Logging a User Out
+
+Creating the logout logic is easy. The route should just unauthenticate the user, and redirect to the home page instead of rendering any view.
+
+In passport, unauthenticating a user is as easy as just calling `req.logout()` before redirecting. Add this `/logout` route to do that:
+```node.js
+app.route('/logout')
+  .get((req, res) => {
+    req.logout();
+    res.redirect('/');
+});
+```
+You may have noticed that you are not handling missing pages (404). The common way to handle this in Node is with the following middleware. Go ahead and add this in after all your other routes:
+```node.js
+app.use((req, res, next) => {
+  res.status(404)
+    .type('text')
+    .send('Not Found');
+});
+```
+***
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+const session = require('express-session');
+const passport = require('passport');
+const ObjectID = require('mongodb').ObjectID;
+const LocalStrategy = require('passport-local');
+
+const app = express();
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  // Be sure to change the title
+  app.route('/').get((req, res) => {
+    // Change the response to render the Pug template
+    res.render('index', {
+      title: 'Connected to Database',
+      message: 'Please login',
+      showLogin: true
+    });
+  });
+
+  app.route('/login').post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
+    res.redirect('/profile');
+  });
+
+  app.route('/profile').get(ensureAuthenticated, (req,res) => {
+    res.render('profile', { username: req.user.username });
+  });
+
+  app.route('/logout').get((req, res) => {
+    req.logout();
+    res.redirect('/');
+  });
+
+  app.use((req, res, next) => {
+    res.status(404)
+      .type('text')
+      .send('Not Found');
+  });
+
+  passport.use(new LocalStrategy((username, password, done) => {
+    myDataBase.findOne({ username: username }, (err, user) => {
+      console.log(`User ${username} attempted to log in.`);
+      if (err) return done(err);
+      if (!user) return done(null, false);
+      if (password !== user.password) return done(null, false);
+      return done(null, user);
+    });
+  }));
+
+  // Serialization and deserialization here...
+  passport.serializeUser((user, done) => {
+    done(null, user._id);
+  });
+
+  passport.deserializeUser((id, done) => {
+    myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+    done(null, doc);
+    });
+  });
+
+  // Be sure to add this...
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect('/');
+};
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
+***
+
+- 먼저 정의된 라우트 및 미들웨어가 우선적으로 처리됩니다. 따라서 404 에러 미들웨어는 정의된 모든 라우트와 미들웨어가 해당 요청에 맞는 처리 방법을 찾지 못한 경우에만 실행됩니다. 404 에러 미들웨어는 마지막 수단으로, 다른 모든 라우트 및 미들웨어에서 요청을 처리하지 못한 경우에만 실행됩니다. 
+- 404 에러 미들웨어는 요청된 페이지나 엔드포인트를 찾지 못한 경우 실행됩니다. 이것은 일종의 "에러 상황"을 나타내며, 이 미들웨어는 해당 에러를 처리하는 역할을 합니다.
+- 따라서 이 코드는 미들웨어 스택의 가장 마지막에 추가되는 것이 일반적입니다. 이 위치에 있으면, 404 에러 미들웨어는 모든 다른 라우트 및 미들웨어를 통과한 후에만 실행되며, 클라이언트에게 "Not Found"와 같은 404 에러 메시지를 반환하게 됩니다.
+
+***
+
+- res.status(404): 이 부분은 HTTP 응답 상태 코드를 404로 설정하는 부분입니다. 404은 "Not Found" 상태 코드를 나타냅니다. 이것은 서버에서 요청한 리소스 또는 페이지를 찾을 수 없을 때 사용됩니다.
+- .type('text'): 이 부분은 응답의 콘텐츠 타입을 설정하는 부분입니다. 여기서는 'text'로 설정되어 있으므로 응답 콘텐츠의 타입이 일반 텍스트로 지정됩니다.
+- .send('Not Found'): 이 부분은 클라이언트에게 응답을 보내는 부분입니다. 'Not Found'라는 텍스트를 클라이언트로 보내고, 이것이 클라이언트에게 반환되는 내용이 됩니다.
+
+## Registration of New Users
+
+Now you need to allow a new user on your site to register an account. In the `res.render` for the home page add a new variable to the object passed along - `showRegistration: true`. When you refresh your page, you should then see the registration form that was already created in your `index.pug` file. This form is set up to **POST** on `/register`, so create that route and have it add the user object to the database by following the logic below.
+
+The logic of the registration route should be as follows:
+
+1. Register the new user
+2. Authenticate the new user
+3. Redirect to /profile
+  
+The logic of step 1 should be as follows:
+
+1. Query database with `findOne`
+2. If there is an error, call `next` with the error
+3. If a user is returned, redirect back to home
+4. If a user is not found and no errors occur, then `insertOne` into the database with the username and password. As long as no errors occur there, call `next` to go to step 2, authenticating the new user, which you already wrote the logic for in your `POST /login` route.
+
+```node.js
+app.route('/register')
+  .post((req, res, next) => {
+    myDataBase.findOne({ username: req.body.username }, (err, user) => {
+      if (err) {
+        next(err);
+      } else if (user) {
+        res.redirect('/');
+      } else {
+        myDataBase.insertOne({
+          username: req.body.username,
+          password: req.body.password
+        },
+          (err, doc) => {
+            if (err) {
+              res.redirect('/');
+            } else {
+              // The inserted document is held within
+              // the ops property of the doc
+              next(null, doc.ops[0]);
+            }
+          }
+        )
+      }
+    })
+  },
+    passport.authenticate('local', { failureRedirect: '/' }),
+    (req, res, next) => {
+      res.redirect('/profile');
+    }
+  );
+```
+**NOTE**: From this point onwards, issues can arise relating to the use of the picture-in-picture browser. If you are using an online IDE which offers a preview of the app within the editor, it is recommended to open this preview in a new tab.
+
+***
+
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+const session = require('express-session');
+const passport = require('passport');
+const ObjectID = require('mongodb').ObjectID;
+const LocalStrategy = require('passport-local');
+
+const app = express();
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  // Be sure to change the title
+  app.route('/').get((req, res) => {
+    // Change the response to render the Pug template
+    res.render('index', {
+      title: 'Connected to Database',
+      message: 'Please login',
+      showLogin: true,
+      showRegistration: true
+    });
+  });
+
+  app.route('/login').post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
+    res.redirect('/profile');
+  });
+
+  app.route('/profile').get(ensureAuthenticated, (req,res) => {
+    res.render('profile', { username: req.user.username });
+  });
+
+  app.route('/logout').get((req, res) => {
+    req.logout();
+    res.redirect('/');
+  });
+
+  app.route('/register')
+  .post((req, res, next) => {
+    myDataBase.findOne({ username: req.body.username }, (err, user) => {
+      if (err) {
+        next(err);
+      } else if (user) {
+        res.redirect('/');
+      } else {
+        myDataBase.insertOne({
+          username: req.body.username,
+          password: req.body.password
+        },
+          (err, doc) => {
+            if (err) {
+              res.redirect('/');
+            } else {
+              // The inserted document is held within
+              // the ops property of the doc
+              next(null, doc.ops[0]);
+            }
+          }
+        )
+      }
+    })
+  },
+    passport.authenticate('local', { failureRedirect: '/' }),
+    (req, res, next) => {
+      res.redirect('/profile');
+    }
+  );
+
+  app.use((req, res, next) => {
+    res.status(404)
+      .type('text')
+      .send('Not Found');
+  });
+
+  passport.use(new LocalStrategy((username, password, done) => {
+    myDataBase.findOne({ username: username }, (err, user) => {
+      console.log(`User ${username} attempted to log in.`);
+      if (err) return done(err);
+      if (!user) return done(null, false);
+      if (password !== user.password) return done(null, false);
+      return done(null, user);
+    });
+  }));
+
+  // Serialization and deserialization here...
+  passport.serializeUser((user, done) => {
+    done(null, user._id);
+  });
+
+  passport.deserializeUser((id, done) => {
+    myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+    done(null, doc);
+    });
+  });
+
+  // Be sure to add this...
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect('/');
+};
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
+***
+
+- passport.authenticate('local', { failureRedirect: '/' }): Passport.js를 사용하여 사용자를 로그인합니다. 이 미들웨어는 사용자가 입력한 로그인 정보를 확인하고, 로그인이 실패하면 홈 페이지로 리디렉션합니다.
+- passport.authenticate('local', { failureRedirect: '/' })의 다음 미들웨어는 로그인이 성공하면 실행됩니다.
+- 요약하면, 사용자가 등록 페이지에서 POST 요청을 보내면, Express 애플리케이션은 사용자 이름이 이미 데이터베이스에 있는지 확인하고, 이미 등록된 경우 홈 페이지로 리디렉션하거나, 등록되지 않은 경우 사용자 정보를 데이터베이스에 추가한 다음, 로그인을 수행하고 로그인이 성공하면 프로필 페이지로 리디렉션합니다.
