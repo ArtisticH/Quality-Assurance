@@ -621,3 +621,308 @@ const myDataBase = await client.db('database').collection('users');
 따라서 이 코드는 MongoDB 클라이언트를 사용하여 'database' 데이터베이스 내의 'users' 컬렉션을 가리키는 데이터베이스 객체를 가져온다고 해석할 수 있습니다.
 
 ## Authentication Strategies
+
+A strategy is a way of authenticating a user. You can use a strategy for allowing users to authenticate based on locally saved information (if you have them register first) or from a variety of providers such as Google or GitHub. For this project, we will use Passport middleware. Passport provides a comprehensive set of strategies that support authentication using a username and password, GitHub, Google, and more.
+
+`passport-local@~1.0.0` has already been added as a dependency. Add it to your server as follows:
+```node.js
+const LocalStrategy = require('passport-local');
+```
+Tell passport to use an instantiated `LocalStrategy` object with a few settings defined. Make sure this (as well as everything from this point on) is encapsulated in the database connection since it relies on it!:
+```node.js
+passport.use(new LocalStrategy((username, password, done) => {
+  myDataBase.findOne({ username: username }, (err, user) => {
+    console.log(`User ${username} attempted to log in.`);
+    if (err) return done(err);
+    if (!user) return done(null, false);
+    if (password !== user.password) return done(null, false);
+    return done(null, user);
+  });
+}));
+```
+This is defining the process to use when you try to authenticate someone locally. First, it tries to find a user in your database with the username entered. Then, it checks for the password to match. Finally, if no errors have popped up that you checked for (e.g. an incorrect password), the `user` object is returned and they are authenticated.
+
+Many strategies are set up using different settings. Generally, it is easy to set it up based on the README in that strategy's repository. A good example of this is the GitHub strategy where you don't need to worry about a username or password because the user will be sent to GitHub's auth page to authenticate. As long as they are logged in and agree then GitHub returns their profile for you to use.
+
+In the next step, you will set up how to actually call the authentication strategy to validate a user based on form data.  
+
+***
+
+passport.use()는 Passport.js 라이브러리를 사용할 때, 사용자 인증을 처리하는 데 사용되는 메서드 중 하나입니다. 이 메서드는 Passport에서 사용할 인증 전략을 설정하고 등록하는 데 사용됩니다.
+
+Passport.js는 다양한 인증 전략을 지원하며, 각 전략은 다른 방식으로 사용자 인증을 처리합니다. 예를 들어, 로컬 인증, 소셜 미디어 인증, OpenID, 또는 사용자 지정 인증 방법을 사용할 수 있습니다. passport.use() 메서드는 이러한 전략 중 하나를 선택하고 설정하는 데 사용됩니다.  
+
+```node.js
+passport.use(new LocalStrategy(options, verifyCallback));
+```
+
+- LocalStrategy는 Passport의 로컬 전략을 나타냅니다.
+- options는 해당 전략의 옵션을 설정하는 객체입니다. 이 객체는 로그인 양식의 필드 이름, 사용자 정보가 저장된 위치 등과 관련된 설정을 포함할 수 있습니다.
+- verifyCallback는 사용자 인증을 처리하는 콜백 함수입니다. 이 함수는 사용자 이름과 비밀번호를 받아서 실제 사용자 정보를 확인하고 사용자가 인증되었는지 여부를 결정합니다.
+
+전략을 설정하고 passport.use()를 호출한 후, 해당 전략은 Passport.js가 요청을 처리할 때 사용자 인증을 수행하게 됩니다. 사용자가 로그인 시도를 하면 설정된 전략이 활성화되고, 해당 전략에 따라 사용자 정보의 유효성을 확인하고 사용자를 인증하거나 거부할 수 있습니다.
+
+## How to Use Passport Strategies
+
+In the `index.pug` file supplied, there is a login form. It is hidden because of the inline JavaScript `if showLogin` with the form indented after it.
+
+In the `res.render` for that page, add a new variable to the object, `showLogin: true`. When you refresh your page, you should then see the form! This form is set up to POST on `/login`. So, this is where you should set up to accept the POST request and authenticate the user.
+
+For this challenge, you should add the route `/login` to accept a POST request. To authenticate on this route, you need to add a middleware to do so before then sending a response. This is done by just passing another argument with the middleware before with your response. The middleware to use is `passport.authenticate('local')`.
+
+`passport.authenticate` can also take some options as an argument such as `{ failureRedirect: '/' }` which is incredibly useful, so be sure to add that in as well. Add a response after using the middleware (which will only be called if the authentication middleware passes) that redirects the user to `/profile`. Add that route, as well, and make it render the view `profile.pug`.
+
+If the authentication was successful, the user object will be saved in `req.user`.
+
+At this point, if you enter a username and password in the form, it should redirect to the home page `/`, and the console of your server should display `'User {USERNAME} attempted to log in.'`, since we currently cannot login a user who isn't registered.  
+
+***
+
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+const session = require('express-session');
+const passport = require('passport');
+const ObjectID = require('mongodb').ObjectID;
+const LocalStrategy = require('passport-local');
+
+const app = express();
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  // Be sure to change the title
+  app.route('/').get((req, res) => {
+    // Change the response to render the Pug template
+    res.render('index', {
+      title: 'Connected to Database',
+      message: 'Please login',
+      showLogin: true
+    });
+  });
+
+  app.route('/login').post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
+    res.redirect('/profile');
+  });
+
+  passport.use(new LocalStrategy((username, password, done) => {
+    myDataBase.findOne({ username: username }, (err, user) => {
+      console.log(`User ${username} attempted to log in.`);
+      if (err) return done(err);
+      if (!user) return done(null, false);
+      if (password !== user.password) return done(null, false);
+      return done(null, user);
+    });
+  }));
+
+  // Serialization and deserialization here...
+  passport.serializeUser((user, done) => {
+    done(null, user._id);
+  });
+
+  passport.deserializeUser((id, done) => {
+    myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+    done(null, doc);
+    });
+  });
+
+  // Be sure to add this...
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
+
+***
+
+1. **index.pug 파일**: index.pug 파일에는 로그인 폼이 포함되어 있으나 초기에는 숨겨져 있습니다. 이 폼은 사용자가 로그인 정보(사용자 이름 및 비밀번호)를 입력할 수 있는 폼입니다.
+
+2. **res.render() 함수**: 웹 애플리케이션의 서버에서 res.render() 함수를 사용하여 웹 페이지를 렌더링하고 브라우저에 표시하는 부분입니다. 이 때, showLogin: true라는 변수를 템플릿으로 전달하여 로그인 폼을 표시할 수 있도록 합니다.
+
+3. **/login 라우트**: POST 요청을 수신하고 사용자 인증을 처리하는 라우트를 설정합니다. 이 라우트는 사용자가 로그인을 시도할 때 호출됩니다. passport.authenticate('local') 미들웨어를 사용하여 사용자의 자격을 검사하고, { failureRedirect: '/' } 옵션을 사용하여 인증 실패 시 홈 페이지로 리디렉션합니다.
+
+4. **req.user**: 사용자가 성공적으로 인증되면 req.user 객체에 사용자 정보가 저장됩니다.
+
+5. **/profile 라우트**: 인증에 성공한 사용자를 위한 프로필 페이지를 설정합니다. 이 페이지는 profile.pug 뷰를 렌더링하여 사용자 프로필 정보를 표시합니다.
+
+6. **사용자 로그인 시도 로그**: 사용자가 로그인 시도를 할 때, 서버 콘솔에 "User {USERNAME} attempted to log in."와 같은 로그 메시지를 출력하도록 설정합니다. 이는 로그인 시도 이력을 추적하고 디버깅에 도움이 됩니다.
+
+***
+
+- /login 라우터는 passport.authenticate('local') 미들웨어를 사용하여 사용자의 자격을 검사하고, 이 때 Passport.js는 LocalStrategy를 사용합니다. passport.authenticate('local') 미들웨어는 내부적으로 LocalStrategy를 실행합니다. 이때, 사용자가 입력한 아이디(username)와 비밀번호(password)는 LocalStrategy로 전달됩니다. 즉, 사용자의 입력이 자동으로 LocalStrategy 내의 매개변수로 전달됩니다.
+
+- passport.authenticate('local') 미들웨어는 다음을 수행합니다:
+  - 사용자가 제출한 로그인 정보(사용자 이름과 비밀번호)를 추출합니다.
+  - 이 정보를 사용하여 LocalStrategy를 실행합니다.
+  - LocalStrategy에서는 데이터베이스에서 사용자 정보를 검색하고, 입력된 비밀번호와 저장된 비밀번호를 비교하여 사용자를 확인합니다.
+  - 만약 사용자 정보가 일치하지 않거나 인증에 실패하면 미들웨어는 실패 상태로 처리됩니다.
+  - 인증에 성공하면, 사용자 정보가 req.user 객체에 저장됩니다.
+ 
+- LocalStrategy에서는 데이터베이스에서 사용자를 찾아보고, 입력된 비밀번호와 저장된 비밀번호를 비교하여 사용자를 인증하거나 거부합니다. 이 과정에서 콜백 함수(done)를 사용하여 Passport에 결과를 알립니다.
+- 만약 인증에 성공하면 done(null, user)를 호출하여 사용자 정보(user)를 passport.authenticate에 반환하고, 이로써 인증이 성공한 것을 나타냅니다.
+
+- 인증이 성공하든 실패하든, passport.authenticate('local') 미들웨어는 이에 따라 리디렉션을 수행합니다.
+- 사용자가 리디렉션된 페이지로 이동하게 됩니다. 만약 인증에 성공했다면, 사용자는 로그인된 상태로 프로필 페이지나 다른 보호된 페이지로 이동하게 됩니다.
+
+- 요약하면, passport.authenticate('local')는 사용자의 아이디와 비밀번호를 LocalStrategy에 전달하고, LocalStrategy는 이를 검사하여 사용자 인증을 처리합니다. 사용자가 HTML 폼에서 입력한 정보는 passport.authenticate와 LocalStrategy를 통해 자동으로 전달됩니다.
+
+## Create New Middleware
+
+As is, any user can just go to `/profile` whether they have authenticated or not by typing in the URL. You want to prevent this by checking if the user is authenticated first before rendering the profile page. This is the perfect example of when to create a middleware.  
+
+현재 상태에서는 어떤 사용자라도 URL에 직접 "/profile"을 입력하면 프로필 페이지에 접근할 수 있습니다. 즉, 로그인 여부를 확인하지 않고도 누구나 프로필 페이지를 열 수 있습니다. 이렇게 하면 보안에 취약하게 됩니다.
+
+이 문장은 이 문제를 해결하기 위해 사용자가 프로필 페이지에 액세스하기 전에 사용자가 로그인되었는지 확인하는 중요한 조치를 취해야 한다는 것을 나타냅니다. 이것을 구현하는 데 사용되는 것이 "미들웨어"입니다.  
+
+The challenge here is creating the middleware function `ensureAuthenticated(req, res, next)`, which will check if a user is authenticated by calling Passport's `isAuthenticated` method on the `request` which checks if `req.user` is defined. If it is, then `next()` should be called. Otherwise, you can just respond to the request with a redirect to your homepage to login.
+
+An implementation of this middleware is:
+```node.js
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect('/');
+};
+```
+Create the above middleware function, then pass `ensureAuthenticated` as middleware to requests for the profile page before the argument to the GET request:
+```node.js
+app
+ .route('/profile')
+ .get(ensureAuthenticated, (req,res) => {
+    res.render('profile');
+ });
+```
+***
+
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+const session = require('express-session');
+const passport = require('passport');
+const ObjectID = require('mongodb').ObjectID;
+const LocalStrategy = require('passport-local');
+
+const app = express();
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  // Be sure to change the title
+  app.route('/').get((req, res) => {
+    // Change the response to render the Pug template
+    res.render('index', {
+      title: 'Connected to Database',
+      message: 'Please login',
+      showLogin: true
+    });
+  });
+
+  app.route('/login').post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
+    res.redirect('/profile');
+  });
+
+  app.route('/profile').get(ensureAuthenticated, (req,res) => {
+    res.render('profile');
+  });
+
+  passport.use(new LocalStrategy((username, password, done) => {
+    myDataBase.findOne({ username: username }, (err, user) => {
+      console.log(`User ${username} attempted to log in.`);
+      if (err) return done(err);
+      if (!user) return done(null, false);
+      if (password !== user.password) return done(null, false);
+      return done(null, user);
+    });
+  }));
+
+  // Serialization and deserialization here...
+  passport.serializeUser((user, done) => {
+    done(null, user._id);
+  });
+
+  passport.deserializeUser((id, done) => {
+    myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+    done(null, doc);
+    });
+  });
+
+  // Be sure to add this...
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+function ensureAuthenticated(req, res, next) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect('/');
+};
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
+***
+
+1. **passport.authenticate('local', { failureRedirect: '/' })**: 이 미들웨어는 Passport.js의 authenticate 메서드를 호출하여 사용자 인증을 수행합니다. 인증에 성공하면 이 미들웨어는 다음 라우팅 핸들러로 요청을 전달하기 위해 ***내부적으로 next()를 호출***합니다. 인증에 실패한 경우, failureRedirect 옵션에 지정된 경로로 리디렉션합니다. 즉, 인증에 실패하면 이 미들웨어는 다음 라우팅 핸들러로 이동하지 않고, 대신 리디렉션을 수행합니다.
+
+2. **function ensureAuthenticated(req, res, next)**: 이 미들웨어는 사용자가 로그인되었는지 확인하는 역할을 합니다. req.isAuthenticated() 메서드를 사용하여 현재 사용자가 인증되었는지를 확인하고, 인증되었을 경우 ***next()를 호출***하여 다음 라우팅 핸들러로 요청을 전달합니다. 이 미들웨어는 다음 라우팅 핸들러로 진행하기 전에 사용자 인증을 확인하고, 인증되지 않은 경우 리디렉션을 수행합니다.
+
+passport.authenticate은 인증 처리에 사용되며, ensureAuthenticated는 인증 상태를 확인하는 역할을 합니다.
+
+## How to Put a Profile Together
+
