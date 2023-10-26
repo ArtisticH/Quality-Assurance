@@ -35,6 +35,87 @@ If all went as planned, your app home page will no longer be blank. Instead, it 
 
 만약 모든 것이 제대로 작동한다면, 앱의 홈 페이지는 이제 빈 화면이 아니라 Pug 템플릿을 렌더링한 메시지가 표시될 것입니다.  
 
-Pug는 템플릿 엔진이며 프레임워크가 아닙니다. Pug(이전 이름은 Jade)은 HTML과 유사한 마크업 언어로, 웹 페이지의 구조를 정의하고 동적 데이터를 삽입하기 위한 템플릿 언어입니다. Pug는 Express.js와 같은 Node.js 웹 애플리케이션 프레임워크와 함께 자주 사용됩니다. Express와 Pug를 함께 사용하면 서버 측에서 웹 페이지를 동적으로 생성하고 클라이언트에게 제공할 수 있습니다. Pug은 서버 측에서 HTML을 생성하는 데 사용되는 템플릿 언어이고, 서버에서 동적으로 웹 페이지를 생성하는 데 사용합니다. 서버 측 렌더링 및 템플릿 작성에 중점을 둡니다. 
+Pug는 템플릿 엔진이며 프레임워크가 아닙니다. Pug(이전 이름은 Jade)은 HTML과 유사한 마크업 언어로, 웹 페이지의 구조를 정의하고 동적 데이터를 삽입하기 위한 템플릿 언어입니다. Pug는 Express.js와 같은 Node.js 웹 애플리케이션 프레임워크와 함께 자주 사용됩니다. Express와 Pug를 함께 사용하면 서버 측에서 웹 페이지를 동적으로 생성하고 클라이언트에게 제공할 수 있습니다. Pug은 서버 측에서 HTML을 생성하는 데 사용되는 템플릿 언어이고, 서버에서 동적으로 웹 페이지를 생성하는 데 사용합니다. 서버 측 렌더링 및 템플릿 작성에 중점을 둡니다.  
+
+📝 index.pug
+```pug
+html
+  head
+    title FCC Advanced Node and Express
+    meta(name='description', content='Home page')
+    meta(charset='utf-8')
+    meta(http-equiv='X-UA-Compatible', content='IE=edge')
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    link(rel='stylesheet', href='/public/style.css')
+  body
+    h1.border.center FCC Advanced Node and Express
+    h2.center#pug-success-message
+    | Looks like this page is being rendered from Pug into HTML!
+    | #{title}
+    p#pug-variable=message
+    
+    
+    
+    if showLogin
+      hr
+      h2.center Login Form
+      form(action='/login', method='post').center
+        div
+          label Username:
+          input(type='text', name='username')
+        div
+          label Password:
+          input(type='password', name='password')
+        div
+          input(type='submit', value='Log In')
+          
+    if showRegistration
+      hr
+      h2.center Registration Form
+      form(action='/register', method='post').center
+        div
+          label Username:
+          input(type='text', name='username')
+        div
+          label Password:
+          input(type='password', name='password')
+        div
+          input(type='submit', value='Register')
+
+    if showSocialAuth
+      hr
+      h2.center Social Login
+      .login.center
+        a(href='/auth/github').text Login with Github!
+```
+📝 server.js
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+
+const app = express();
+
+fccTesting(app); //For FCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Index page (static HTML), 여기 작성
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.route('/').get((req, res) => {
+  // 여기 작성
+  res.render('index');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log('Listening on port ' + PORT);
+});
+```
 
 
