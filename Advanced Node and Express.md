@@ -264,7 +264,7 @@ Be sure to add `SESSION_SECRET` to your `.env` file, and give it a random value.
 After you do all that, tell your express app to use `passport.initialize()` and `passport.session()`.
 
 ***
-
+```
 const session = require('express-session');
 const passport = require('passport');
 
@@ -276,9 +276,16 @@ app.use(session({
   saveUninitialized: true,
   cookie: { secure: false }
 }));
-
+```
 ***
 
+1. **express-session 모듈**: 이 모듈은 세션 관리를 위한 Express의 미들웨어입니다. 세션은 웹 애플리케이션에서 사용자의 상태를 유지하고 세션 정보를 저장하는 데 사용됩니다. express-session을 사용하면 세션 데이터를 서버 측에서 유지하고, 클라이언트에 대한 고유한 세션 식별자를 부여할 수 있습니다. 이 모듈은 secret, resave, saveUninitialized, cookie 등의 설정을 사용하여 세션의 동작을 제어할 수 있습니다.
+
+2. **passport.session() 미들웨어**: passport.session()은 Passport 인증 미들웨어와 함께 사용됩니다. Passport는 사용자 인증을 처리하는 도구이며, 사용자 인증을 성공적으로 완료한 후 사용자를 세션에 저장하려면 세션 관리 기능이 필요합니다. passport.session()은 Passport가 사용자 정보를 세션에 저장하고 사용자가 다시 요청을 보낼 때 해당 세션 정보를 검색할 수 있도록 도와주는 미들웨어입니다.
+
+결국, passport.session()는 Passport가 세션을 사용하여 사용자를 추적하고 인증 상태를 유지하는 데 필요한 부분이며, express-session은 이 세션을 관리하는 데 사용되는 Express의 세션 미들웨어입니다. 따라서 이 두 미들웨어를 함께 사용함으로써 Passport를 통해 사용자 인증을 처리하고 세션을 효과적으로 관리할 수 있습니다.
+
+***
 
 1. **passport.initialize():**
 
