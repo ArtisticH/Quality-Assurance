@@ -1356,3 +1356,26 @@ app.listen(PORT, () => {
 - passport.authenticate('local', { failureRedirect: '/' }): Passport.js를 사용하여 사용자를 로그인합니다. 이 미들웨어는 사용자가 입력한 로그인 정보를 확인하고, 로그인이 실패하면 홈 페이지로 리디렉션합니다.
 - passport.authenticate('local', { failureRedirect: '/' })의 다음 미들웨어는 로그인이 성공하면 실행됩니다.
 - 요약하면, 사용자가 등록 페이지에서 POST 요청을 보내면, Express 애플리케이션은 사용자 이름이 이미 데이터베이스에 있는지 확인하고, 이미 등록된 경우 홈 페이지로 리디렉션하거나, 등록되지 않은 경우 사용자 정보를 데이터베이스에 추가한 다음, 로그인을 수행하고 로그인이 성공하면 프로필 페이지로 리디렉션합니다.
+
+***
+
+제공된 코드에서 app.route('/register') 미들웨어 체인 내부의 next(null, doc.ops[0]);는 passport.authenticate('local', { failureRedirect: '/' }) 다음에 오는 함수로 제어를 전달하지 않는 이유는 Passport.js의 passport.authenticate 미들웨어와 Express의 라우팅 미들웨어(app.route('/register').post(...))가 서로 다른 스코프에서 실행되기 때문입니다.
+
+passport.authenticate('local', { failureRedirect: '/' })는 Passport.js의 미들웨어로, Passport.js와 Express의 라우팅 미들웨어가 독립적으로 동작합니다. 따라서 next(null, doc.ops[0]);는 Passport.js 내부에서 호출되지 않습니다.
+
+Passport.js의 passport.authenticate 함수는 사용자 로그인 시도를 처리하고, 로그인이 성공하면 passport.serializeUser를 호출하고, 로그인이 실패하면 failureRedirect에 지정된 경로로 리디렉션합니다. Express.js의 라우팅 미들웨어와는 별개의 처리 과정을 가지므로 next(null, doc.ops[0]);는 passport.authenticate 미들웨어를 거치지 않습니다.
+
+따라서, next(null, doc.ops[0]);는 passport.authenticate 다음에 오는 (req, res, next) => { res.redirect('/profile'); } 함수로 제어를 전달하는 것이 아니라, 현재 함수의 완료를 의미합니다. 따라서 passport.authenticate와는 별개로 처리되며, 이후의 리디렉션은 현재 함수에서 직접 수행됩니다.
+
+***
+
+Express.js 애플리케이션에서 다음과 같이 서로 다른 스코프를 가지는 두 부분을 살펴보겠습니다:
+
+1. Express.js 라우팅 미들웨어:
+- Express.js 라우팅 미들웨어는 애플리케이션의 경로 및 HTTP 메서드에 대한 라우팅 및 미들웨어 함수를 정의합니다. 이러한 라우팅 미들웨어는 Express.js 애플리케이션의 스코프 내에서 실행됩니다.
+
+2. Passport.js 미들웨어:
+- Passport.js는 사용자 인증 및 세션 관리를 위한 라이브러리로, Passport.js의 미들웨어는 Passport.js의 스코프 내에서 실행됩니다. Passport.js는 Express.js와 결합하여 사용자 인증을 처리하지만, Express.js 라우팅 미들웨어와는 별개의 스코프를 가집니다.
+
+ 
+서로 다른 스코프에서 실행되는 미들웨어 함수는 독립적으로 동작하며, 변수 및 함수에 대한 접근 범위가 서로 겹치지 않습니다. 따라서 next(null, doc.ops[0]);는 Express.js의 라우팅 미들웨어 내에서 정의된 부분이며, passport.authenticate는 Passport.js의 미들웨어이므로 서로 다른 스코프에서 실행됩니다.
