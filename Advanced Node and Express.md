@@ -108,6 +108,9 @@ html
       .login.center
         a(href='/auth/github').text Login with Github!
 ```
+
+***
+
 📝 server.js
 ```node.js
 'use strict';
@@ -137,6 +140,26 @@ app.listen(PORT, () => {
   console.log('Listening on port ' + PORT);
 });
 ```
+
+***
+
+1. **app.use(express.json());**: 이 코드는 Express 애플리케이션에서 JSON 형식의 요청 데이터를 파싱할 수 있도록 미들웨어를 추가하는 부분입니다. Express의 express.json() 미들웨어는 들어오는 HTTP 요청의 본문(body)을 JSON 형식으로 파싱하여 JavaScript 객체로 만들어줍니다. 이것은 클라이언트가 JSON 형식의 데이터를 POST 또는 PUT 요청을 통해 서버로 보낼 때 사용됩니다. 파싱된 데이터는 req.body를 통해 라우트 핸들러에서 접근할 수 있게 됩니다.
+
+2. **app.use(express.urlencoded({ extended: true }));**: 이 코드는 Express 애플리케이션에서 URL-encoded 형식의 요청 데이터를 파싱할 수 있도록 미들웨어를 추가하는 부분입니다. URL-encoded 형식은 폼 데이터를 전송할 때 주로 사용됩니다. express.urlencoded() 미들웨어는 들어오는 HTTP 요청의 본문(body)을 URL-encoded 형식으로 파싱하여 JavaScript 객체로 만들어줍니다. { extended: true } 옵션은 파싱된 데이터가 복잡한 객체 및 배열을 지원하도록 하는 옵션입니다. 파싱된 데이터는 req.body를 통해 라우트 핸들러에서 접근할 수 있게 됩니다.
+
+이 두 가지 미들웨어를 사용하면 Express 애플리케이션에서 클라이언트로부터 JSON 또는 URL-encoded 형식의 데이터를 읽을 수 있으며, 이 데이터를 가공하여 서버 측에서 사용할 수 있습니다.  
+
+***
+
+URL-encoded 형식은 웹에서 데이터를 전송하거나 저장할 때 사용되는 데이터 인코딩 방식 중 하나입니다. 이 형식은 특수 문자나 공백과 같은 일부 문자를 URL에서 안전하게 전송하기 위해 사용됩니다.
+
+URL-encoded 형식의 주요 특징은 다음과 같습니다:
+
+1. **문자 대체**: URL-encoded 형식은 URL에서 사용되는 특수 문자와 일반적인 문자를 대체하는 방식으로 동작합니다. 예를 들어, 스페이스(space) 문자는 %20으로 인코딩됩니다. 이렇게 인코딩된 데이터는 URL에서 사용 가능하며, 데이터가 정확하게 전달됩니다.
+
+2. **데이터 전송**: URL-encoded 데이터는 주로 HTML 폼에서 사용자로부터 수집한 데이터를 서버로 전송할 때 쓰입니다. 사용자가 웹 폼에서 입력한 데이터(예: 이름, 이메일 주소, 메시지)는 URL-encoded 형식으로 서버에 전송됩니다.
+
+3. **쿼리 문자열**: URL-encoded 데이터는 URL의 쿼리 문자열 부분에서 매개변수를 전달하는 데도 사용됩니다. 예를 들어, http://example.com/search?q=keyword에서 "keyword"는 URL-encoded 형식으로 쿼리 문자열에 포함됩니다.
 
 ## Use a Template Engine's Powers
 
