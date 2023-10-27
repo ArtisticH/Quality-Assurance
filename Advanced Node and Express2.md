@@ -415,3 +415,356 @@ OAuth는 외부 서비스 (예: GitHub)를 사용하여 사용자 인증 및 권
 
 ***
 
+- /auth/github 경로(route)는 Passport를 사용하여 'github' 전략을 인증하도록 호출해야 합니다. 즉, 사용자를 GitHub의 인증 페이지로 리디렉션하여 GitHub에서 로그인 및 권한 부여 프로세스를 수행하도록 합니다.
+- /auth/github/callback 경로(route)는 GitHub에서의 인증이 성공하면 /profile로 리디렉션하도록 설정해야 하며, 인증이 실패하면 /로 리디렉션하도록 설정해야 합니다.
+
+***
+
+**route.js**
+```node.js
+const passport = require('passport');
+const bcrypt = require('bcrypt');
+
+module.exports = function (app, myDataBase) {
+  app.route('/').get((req, res) => {
+    res.render('index', {
+      title: 'Connected to Database',
+      message: 'Please log in',
+      showLogin: true,
+      showRegistration: true,
+      showSocialAuth: true
+    });
+  });
+
+  app.route('/login').post(passport.authenticate('local', { failureRedirect: '/' }), (req, res) => {
+    res.redirect('/profile');
+  });
+
+  app.route('/profile').get(ensureAuthenticated, (req,res) => {
+    res.render('profile', { username: req.user.username });
+  });
+
+  app.route('/logout').get((req, res) => {
+    req.logout();
+    res.redirect('/');
+  });
+
+  app.route('/register').post((req, res, next) => {
+    const hash = bcrypt.hashSync(req.body.password, 12);
+    myDataBase.findOne({ username: req.body.username }, (err, user) => {
+      if (err) {
+        next(err);
+      } else if (user) {
+        res.redirect('/');
+      } else {
+        myDataBase.insertOne({
+          username: req.body.username,
+          password: hash
+        },
+          (err, doc) => {
+            if (err) {
+              res.redirect('/');
+            } else {
+              // The inserted document is held within
+              // the ops property of the doc
+              next(null, doc.ops[0]);
+            }
+          }
+        )
+      }
+    })
+  },
+    passport.authenticate('local', { failureRedirect: '/' }),
+    (req, res, next) => {
+      res.redirect('/profile');
+    }
+  );
+
+  app.route('/auth/github').get(passport.authenticate('github'));
+  app.route('/auth/github/callback').get(passport.authenticate('github', { failureRedirect: '/' }), (req, res) => {
+    res.redirect('/profile');
+  });
+
+
+  app.use((req, res, next) => {
+    res.status(404)
+      .type('text')
+      .send('Not Found');
+  });
+}
+
+function ensureAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    res.redirect('/');
+};
+```
+
+## Implementation of Social Authentication II
+
+The last part of setting up your GitHub authentication is to create the strategy itself. `passport-github@~1.1.0` has already been added as a dependency, so require it in your `auth.js` file as `GithubStrategy` like this: `const GitHubStrategy = require('passport-github').Strategy;`. Do not forget to require and configure `dotenv` to use your environment variables.
+
+To set up the GitHub strategy, you have to tell Passport to use an instantiated `GitHubStrategy`, which accepts 2 arguments: an object (containing `clientID`, `clientSecret`, and `callbackURL`) and a function to be called when a user is successfully authenticated, which will determine if the user is new and what fields to save initially in the user's database object. This is common across many strategies, but some may require more information as outlined in that specific strategy's GitHub README. For example, Google requires a scope as well which determines what kind of information your request is asking to be returned and asks the user to approve such access.
+
+The current strategy you are implementing authenticates users using a GitHub account and OAuth 2.0 tokens. The client ID and secret obtained when creating an application are supplied as options when creating the strategy. The strategy also requires a `verify` callback, which receives the access token and optional refresh token, as well as `profile` which contains the authenticated user's GitHub profile. The `verify` callback must call `cb` providing a user to complete authentication.
+
+Here's how your new strategy should look at this point:
+
+```node.js
+passport.use(new GitHubStrategy({
+  clientID: process.env.GITHUB_CLIENT_ID,
+  clientSecret: process.env.GITHUB_CLIENT_SECRET,
+  callbackURL: /*INSERT CALLBACK URL ENTERED INTO GITHUB HERE*/
+},
+  function(accessToken, refreshToken, profile, cb) {
+    console.log(profile);
+    //Database logic here with callback containing your user object
+  }
+));
+```
+Your authentication won't be successful yet, and it will actually throw an error without the database logic and callback, but it should log your GitHub profile to your console if you try it!
+
+***
+
+1. auth.js 파일에서 passport-github 패키지를 가져와야 합니다. 이것은 GitHub 전략을 사용하기 위한 라이브러리로, 다음과 같이 가져올 수 있습니다: `const GitHubStrategy = require('passport-github').Strategy;`. 또한 환경 변수를 사용하려면 dotenv도 가져와야 합니다.
+
+2. GitHub 전략을 설정하기 위해 Passport에게 GitHubStrategy를 사용하도록 알려야 합니다. 이를 위해서는 GitHubStrategy의 인스턴스를 만들어야 합니다. 이 인스턴스는 다음 두 가지 인수를 받습니다.
+  - 객체: 이 객체는 clientID, clientSecret, 그리고 callbackURL과 같은 정보를 포함합니다. 이 정보는 GitHub 앱 설정에서 얻을 수 있는데, clientID와 clientSecret는 앱을 식별하고, *callbackURL은 사용자가 GitHub에서 로그인 및 권한 부여를 마치면 돌아갈 URL*을 지정합니다.
+  - 함수: 사용자가 성공적으로 인증될 때 호출되는 함수를 지정해야 합니다. 이 함수는 사용자가 새로운 사용자인지 여부를 결정하고, 사용자 데이터베이스 객체에 초기로 저장할 필드를 지정합니다. 이 함수는 사용자 전략에 따라 다를 수 있으며, GitHub 전략의 README에 자세히 설명되어 있습니다. 예를 들어, Google 전략은 정보 요청에 대한 범위(scope)를 필요로하며, 사용자에게 어떤 종류의 정보 액세스를 요청하고 사용자 승인을 요청합니다.
+
+***
+
+**verify 콜백**: verify 콜백은 사용자가 인증되면 호출되는 함수입니다. 이 콜백은 사용자에게 액세스 토큰과 선택적으로 리프레시 토큰을 전달받습니다. 이를 통해 사용자의 GitHub 프로필 정보에 액세스할 수 있습니다. verify 콜백은 이 정보를 기반으로 사용자를 확인하고, 사용자 인증을 완료하기 위해 Passport에게 사용자를 제공해야 합니다.
+
+***
+
+**auth.js**
+
+```node.js
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const bcrypt = require('bcrypt');
+const { ObjectID } = require('mongodb');
+const GitHubStrategy = require('passport-github').Strategy;
+require('dotenv').config();
+
+module.exports = function (app, myDataBase) {
+  passport.serializeUser((user, done) => {
+      done(null, user._id);
+  });
+  passport.deserializeUser((id, done) => {
+      myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+          if (err) return console.error(err);
+          done(null, doc);
+      });
+  });
+
+  passport.use(new LocalStrategy((username, password, done) => {
+    myDataBase.findOne({ username: username }, (err, user) => {
+      console.log(`User ${username} attempted to log in.`);
+      if (err) { return done(err); }
+      if (!user) { return done(null, false); }
+      if (!bcrypt.compareSync(password, user.password)) { 
+          return done(null, false);
+      }
+      return done(null, user);
+    });
+  }));
+
+  passport.use(new GitHubStrategy({
+      clientID: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      callbackURL: 'https://boilerplate-advancednode-5.artistich.repl.co/auth/github/callback'
+    },
+    function (accessToken, refreshToken, profile, cb) {
+      console.log(profile);
+      //Database logic here with callback containing our user object
+    }
+  ));
+}
+```
+
+## Implementation of Social Authentication III
+
+The final part of the strategy is handling the profile returned from GitHub. We need to load the user's database object if it exists, or create one if it doesn't, and populate the fields from the profile, then return the user's object. GitHub supplies us a unique id within each profile which we can use to search with to serialize the user with (already implemented). Below is an example implementation you can use in your project--it goes within the function that is the second argument for the new strategy, right below where `console.log(profile);` currently is:
+```node.js
+myDataBase.findOneAndUpdate(
+  { id: profile.id },
+  {
+    $setOnInsert: {
+      id: profile.id,
+      username: profile.username,
+      name: profile.displayName || 'John Doe',
+      photo: profile.photos[0].value || '',
+      email: Array.isArray(profile.emails)
+        ? profile.emails[0].value
+        : 'No public email',
+      created_on: new Date(),
+      provider: profile.provider || ''
+    },
+    $set: {
+      last_login: new Date()
+    },
+    $inc: {
+      login_count: 1
+    }
+  },
+  { upsert: true, new: true },
+  (err, doc) => {
+    return cb(null, doc.value);
+  }
+);
+```
+`findOneAndUpdate` allows you to search for an object and update it. If the object doesn't exist, it will be inserted and made available to the callback function. In this example, we always set `last_login`, increment the `login_count` by `1`, and only populate the majority of the fields when a new object (new user) is inserted. Notice the use of default values. Sometimes a profile returned won't have all the information filled out or the user will keep it private. In this case, you handle it to prevent an error.
+
+You should be able to login to your app now. Try it!  
+
+***
+
+이 부분은 GitHub로부터 반환된 프로필을 처리하는 전략의 마지막 부분을 다룹니다. 우리는 사용자 데이터베이스 객체를 로드해야 하며, 해당 사용자 데이터베이스 객체가 존재하면 프로필에서 필드를 채우고 사용자 객체를 반환해야 합니다. 사용자 프로필 내부에는 각 프로필에 대해 고유한 ID가 제공되는데, 이 ID를 사용하여 사용자를 식별하는 데 사용할 수 있습니다. 이러한 작업은 사용자 직렬화(User Serialization)에 필요합니다.
+
+여기에는 프로젝트에서 사용할 수 있는 예제 구현이 포함되어 있습니다. 이 예제는 GitHub 프로필을 처리하기 위한 것으로, 이 코드는 새 전략의 두 번째 인수로 사용됩니다. 즉, 현재 console.log(profile); 아래에 배치됩니다. 아래는 이 부분의 설명입니다:
+
+1. 사용자 데이터베이스 객체 로드 또는 생성: 이 부분에서는 GitHub 프로필 정보를 사용하여 사용자 데이터베이스 객체를 로드하거나 새로 생성해야 합니다. 즉, 사용자가 이미 데이터베이스에 등록되어 있는지 확인하고, 등록되어 있지 않다면 새로운 사용자 데이터베이스 객체를 만들어야 합니다.
+
+2. 프로필 필드 채우기: GitHub 프로필에서 반환된 정보를 사용하여 사용자 데이터베이스 객체의 필드를 채웁니다. 이것은 사용자에 대한 추가 정보를 제공하고 사용자 데이터베이스를 업데이트하는 데 사용됩니다.
+
+3. 사용자 객체 반환: 이 작업을 마치면 사용자 객체를 반환해야 합니다. 이 사용자 객체는 이후에 Passport에 의해 사용자 세션으로 직렬화될 것이며, 사용자가 애플리케이션에서 인증된 상태를 유지할 수 있게 됩니다.
+
+이 부분은 사용자 프로필을 처리하고 GitHub에서 반환된 정보를 사용하여 사용자를 식별하고 데이터베이스에 저장하는 과정을 설명하고 있습니다.
+
+***
+
+- { id: profile.id }: MongoDB에서 찾을 문서의 조건을 정의합니다. 여기서는 GitHub 프로필의 고유 ID (profile.id)를 사용하여 사용자를 식별합니다.
+- $setOnInsert: 새로운 문서가 삽입될 때 설정할 필드를 정의합니다. 즉, 사용자가 처음 등록될 때 이러한 필드가 설정됩니다.
+  - id: GitHub 프로필의 고유 ID를 저장합니다.
+  - username: GitHub 프로필의 사용자 이름을 저장합니다.
+  - name: GitHub 프로필의 표시 이름을 저장하며, 이 값이 없으면 기본으로 'John Doe'가 저장됩니다.
+  - photo: GitHub 프로필 사진 URL을 저장하며, 이 값이 없으면 빈 문자열로 저장됩니다.
+  - email: GitHub 프로필의 이메일 주소를 저장하며, 이 값이 없거나 배열 형식이 아닌 경우 'No public email'이 저장됩니다.
+  - created_on: 사용자 등록일을 현재 날짜로 저장합니다.
+  - provider: 사용자 인증 공급자 정보를 저장합니다.
+- $set: 문서를 업데이트할 때 설정할 필드를 정의합니다. 여기서는 last_login 필드를 현재 날짜로 설정합니다.
+- $inc: 숫자 필드를 증가시키는데 사용됩니다. 여기서는 login_count 필드를 1 증가시킵니다.
+- { upsert: true, new: true }: 옵션 객체로, 이 부분은 다음을 수행합니다.
+  - upsert: true: 조건에 맞는 문서를 찾지 못하면 새 문서를 삽입합니다.
+  - new: true: 업데이트된 문서를 반환하도록 설정합니다.
+- (err, doc) => { return cb(null, doc.value); }: MongoDB에서의 작업이 완료되면 콜백 함수가 호출됩니다. 이 콜백 함수는 오류 (err)와 업데이트된 문서 (doc)를 처리하고 Passport에 사용자 정보를 반환하기 위해 cb(null, doc.value)를 호출합니다. Passport는 이 정보를 사용자 세션으로 직렬화합니다.
+
+***
+
+findOneAndUpdate 함수는 MongoDB에서 문서를 찾고 업데이트할 때 사용되는 메서드로, 다음과 같은 인수를 받습니다:
+
+1. filter (조건 객체): 업데이트할 문서를 선택하는 데 사용되는 조건을 지정하는 객체입니다. 이 객체는 어떤 문서를 업데이트할지 결정합니다.
+2. update (업데이트 객체): 업데이트될 내용을 정의하는 객체입니다. 이 객체는 새로운 데이터나 수정된 데이터를 포함하며, 필요한 경우 다양한 업데이트 연산자를 사용하여 업데이트 작업을 구체화할 수 있습니다.
+3. options (옵션 객체): 업데이트 작업을 제어하는 다양한 옵션을 설정하는 객체입니다.
+- upsert 옵션은 조건에 맞는 문서가 없을 때 새로운 문서를 삽입할지 여부를 결정합니다. 
+- returnOriginal 옵션은 업데이트 전의 문서를 반환할지, 업데이트 후의 문서를 반환할지 설정합니다.
+4. callback (콜백 함수): 업데이트 작업이 완료되면 호출되는 콜백 함수입니다. 이 함수는 두 개의 인수를 받는데, 첫 번째는 오류 (err) 객체이고, 두 번째는 업데이트된 문서 또는 결과를 나타내는 객체입니다.
+
+***
+
+이 예시에서는 항상 last_login 필드를 업데이트하고, login_count 필드를 1 증가시킵니다. 대부분의 필드는 새로운 객체(새 사용자)를 삽입할 때만 값을 채우고, 기본값을 사용합니다. 사용자 프로필에는 모든 정보가 채워지지 않을 수 있거나 사용자가 정보를 비공개로 유지할 수 있습니다. 이 경우, 기본값을 사용하여 누락된 정보나 비공개 정보를 처리함으로써 오류를 방지합니다.  
+
+이러한 방식을 사용하면, 새로운 사용자가 등록될 때 필요한 필드를 기본값으로 채우고, 로그인 시마다 last_login을 업데이트하고 로그인 횟수를 추적할 수 있습니다. 또한 사용자 프로필에 누락된 정보나 비공개 정보가 있는 경우에도 오류가 발생하지 않도록 처리할 수 있습니다.
+
+***
+
+**auth.js**
+```node.js
+const passport = require('passport');
+const LocalStrategy = require('passport-local');
+const bcrypt = require('bcrypt');
+const { ObjectID } = require('mongodb');
+const GitHubStrategy = require('passport-github').Strategy;
+require('dotenv').config();
+
+module.exports = function (app, myDataBase) {
+  passport.serializeUser((user, done) => {
+      done(null, user._id);
+  });
+  passport.deserializeUser((id, done) => {
+      myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
+          if (err) return console.error(err);
+          done(null, doc);
+      });
+  });
+
+  passport.use(new LocalStrategy((username, password, done) => {
+    myDataBase.findOne({ username: username }, (err, user) => {
+      console.log(`User ${username} attempted to log in.`);
+      if (err) { return done(err); }
+      if (!user) { return done(null, false); }
+      if (!bcrypt.compareSync(password, user.password)) { 
+          return done(null, false);
+      }
+      return done(null, user);
+    });
+  }));
+
+  passport.use(new GitHubStrategy({
+      clientID: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      callbackURL: 'https://boilerplate-advancednode-5.artistich.repl.co/auth/github/callback'
+    },
+    function (accessToken, refreshToken, profile, cb) {
+      console.log(profile);
+      //Database logic here with callback containing our user object
+      myDataBase.findAndModify(
+        { id: profile.id },
+        {},
+        {
+          $setOnInsert: {
+            id: profile.id,
+            name: profile.displayName || 'John Doe',
+            photo: profile.photos[0].value || '',
+            email: Array.isArray(profile.emails) ? profile.emails[0].value : 'No public email',
+            created_on: new Date(),
+            provider: profile.provider || ''
+          }, $set: {
+            last_login: new Date()
+          }, $inc: {
+            login_count: 1
+          }
+        },
+        { upsert: true, new: true },
+        (err, doc) => {
+          return cb(null, doc.value);
+        }
+      );
+    }
+  ));
+}
+```
+
+## Set up the Environment
+
+The following challenges will make use of the `chat.pug` file. So, in your `routes.js` file, add a GET route pointing to `/chat` which makes use of `ensureAuthenticated`, and renders `chat.pug`, with `{ user: req.user }` passed as an argument to the response. Now, alter your existing `/auth/github/callback` route to set the `req.session.user_id = req.user.id` and redirect to `/chat`.
+
+`socket.io@~2.3.0` has already been added as a dependency, so require/instantiate it in your server as follows with `http` (comes built-in with Nodejs):  
+
+```node.js
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+```
+Now that the http server is mounted on the express app, you need to listen from the *http* server. Change the line with `app.listen` to `http.listen`.
+
+The first thing needing to be handled is listening for a new connection from the client. The on keyword does just that- listen for a specific event. It requires 2 arguments: a string containing the title of the event that's emitted, and a function with which the data is passed through. In the case of our connection listener, use `socket` to define the data in the second argument. A socket is an individual client who is connected.
+
+To listen for connections to your server, add the following within your database connection:
+```node.js
+io.on('connection', socket => {
+  console.log('A user has connected');
+});
+```
+Now for the client to connect, you just need to add the following to your `client.js` which is loaded by the page after you've authenticated:
+```node.js
+/*global io*/
+let socket = io();
+```
+The comment suppresses the error you would normally see since 'io' is not defined in the file. You have already added a reliable CDN to the Socket.IO library on the page in `chat.pug`.
+
+Now try loading up your app and authenticate and you should see in your server console `A user has connected`.
+
+Note:`io()` works only when connecting to a socket hosted on the same url/server. For connecting to an external socket hosted elsewhere, you would use `io.connect('URL');`.
