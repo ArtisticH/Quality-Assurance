@@ -428,12 +428,12 @@ Similarly, `deserializeUser` is called with two arguments: the unique key, and a
 This callback expects two arguments: An error, if any, and the full user object. To get the full user object, make a query search for a Mongo `_id`, as shown below:
 ```node.js
 passport.serializeUser((user, done) => {
-  done(null, user._id);
+  done(null, user._id); // 저장할 사용자의 고유 ID를 세션에 저장
 });
 
 passport.deserializeUser((id, done) => {
   myDataBase.findOne({ _id: new ObjectID(id) }, (err, doc) => {
-    done(null, null);
+    done(null, null); // 사용자 객체를 세션에서 가져와 반환
   });
 });
 ```
@@ -454,11 +454,32 @@ The `deserializeUser` will throw an error until you set up the database connecti
 - 사용자를 식별하는 고유한 키(일반적으로 사용자의 데이터베이스ID)
 일반적으로, serializeUser 함수는 사용자의 ID를 사용하여 사용자를 식별하고 세션에 저장합니다.
 
+사용자 객체를 받아 해당 사용자를 세션에 저장. 일반적으로 사용자 객체의 고유 식별자를 세션에 저장. 
+
 2. **deserializeUser함수**: 이 함수는 역직렬화하는데 사용된다. 역직렬화란 세션에서 저장된 사용자 식별자(일반적으로 데이터베이스ID)를 사용하여 실제 사용자 객체로 변환하는 과정. 두 개의 인수를 받는다. 첫 번째 인수는 사용자를 식별하는 고유한 키이고, 두 번째는 Passport에서 사용하는 콜백 함수입니다. 이 콜백 함수는 다음 두 가지 인수를 기대합니다:
 - 에러
 - 전체 사용자 객체
 deserializeUser 함수는 주어진 고유한 키(사용자 ID)를 사용하여 데이터베이스에서 해당 사용자를 찾아서 가져와야 합니다. 그 후, 가져온 사용자 객체를 콜백 함수를 통해 Passport에 반환합니다.
 
+세션에서 사용자 식별자를 받아 해당 사용자 객체를 검색하고 반환하는 역할. 즉 사용자 객체를 복구
+
+***
+
+```node.js
+app.post('/login', passport.authenticate('local', {
+    successRedirect: '/dashboard',
+    failureRedirect: '/login',
+    failureFlash: true
+}));
+
+// serializeUser에 사용자를 전달
+passport.serializeUser(function(user, done) {
+    done(null, user._id);
+});
+```
+위의 코드에서 passport.authenticate('local', ...) 메서드는 사용자 인증이 성공하면 사용자 객체(user)를 인자로 받고, 이 객체가 passport.serializeUser로 전달됩니다.
+
+요약하면, passport.serializeUser 함수에서 user는 Passport가 로그인 후에 사용자 정보를 저장하는 데 사용되는 사용자 객체를 나타냅니다.
 ***
 
 ```node.js
