@@ -483,6 +483,16 @@ passport.serializeUser(function(user, done) {
 ***
 
 ```node.js
+const { ObjectID } = require('mongodb');
+const newId = new ObjectID(); // 새로운 고유한 ObjectID 생성
+```
+- 이렇게 생성된 newId는 MongoDB 문서를 삽입하거나 업데이트할 때 _id 필드에 사용할 수 있습니다.
+- const { ObjectID } 코드는 mongodb 패키지에서 ObjectID 객체를 가져와서 현재 스코프에 ObjectID 변수로 사용할 수 있도록 합니다. 이후에 ObjectID를 사용하여 MongoDB에서 _id 필드를 다루거나 새로운 ObjectID를 생성할 수 있습니다.
+- new ObjectID(id)를 사용하면 MongoDB에서 사용하는 특정 형식의 _id로 변환됩니다.
+-  _id는 일반적으로 ObjectId 형식을 가진다.
+***
+
+```node.js
 'use strict';
 require('dotenv').config();
 const express = require('express');
