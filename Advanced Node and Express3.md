@@ -421,3 +421,436 @@ The user object is now accessible on your socket object as `socket.request.user`
 console.log('user ' + socket.request.user.username + ' connected');
 ```
 It will log to the server console who has connected!
+
+***
+
+Socket.IO 및 Passport를 사용하여 웹 소켓 연결에서 사용자 정보를 추적하는 방법에 대한 내용을 설명합니다. 웹 소켓은 HTTP 요청과는 다르게 req (요청) 객체가 없어 사용자 정보를 추적하기가 어려울 수 있습니다. 이를 해결하기 위해 passport.socketio와 다른 패키지를 사용하는 방법에 대해 설명하고 있습니다.
+
+1. 필수 패키지 및 설정:
+- passport.socketio: 웹 소켓 연결에서 사용자 정보를 추적하기 위한 패키지.
+- connect-mongo: MongoDB와 함께 세션 정보를 저장하기 위한 패키지.
+- cookie-parser: 쿠키를 파싱하기 위한 패키지.
+- 이 패키지들을 먼저 요구합니다.
+2. 세션 스토어 설정:
+- express-session에서 새로운 메모리 스토어를 초기화합니다. 이 스토어는 세션 정보를 저장할 용도로 사용됩니다.
+3. Socket.IO 설정:
+- Socket.IO가 위에서 초기화한 메모리 스토어를 사용하도록 설정합니다. 설정 옵션을 제공합니다.
+- 이 부분은 원래의 소켓 코드보다 앞에 추가되어야 합니다.
+4. Passport 인증과 연동:
+- Passport 인증을 위해 세션 쿠키를 검증하고 사용자 정보를 얻어오는 작업을 수행합니다. 이때, Express 애플리케이션과 Socket.IO 연결을 맺습니다.
+- 'cookieParser', 'key' (세션 쿠키 이름), 'secret' (세션 시크릿), 'store' (세션 스토어)와 같은 정보를 설정합니다.
+- 인증이 성공하면 'onAuthorizeSuccess' 함수가 호출되고, 실패하면 'onAuthorizeFail' 함수가 호출됩니다.
+5. 사용자 정보 추적:
+- 이제 웹 소켓 연결에서는 'socket.request.user'를 통해 사용자 정보에 액세스할 수 있습니다.
+- 이 정보를 활용하여 어떤 사용자가 연결되었는지 서버 콘솔에 로깅할 수 있습니다.
+
+예를 들어, 'console.log('user ' + socket.request.user.username + ' connected');'와 같이 사용자가 연결될 때 그 사용자의 이름을 서버 콘솔에 출력할 수 있게 되었습니다.
+
+이를 통해 웹 소켓 연결에서 사용자 정보를 추적하고, 누가 연결되었는지를 서버에서 확인할 수 있게 됩니다. 
+
+***
+
+**server.js**
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+const session = require('express-session');
+const passport = require('passport');
+const routes = require('./routes.js');
+const auth = require('./auth.js');
+
+const app = express();
+
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+const passportSocketIo = require('passport.socketio');
+const cookieParser = require('cookie-parser');
+const MongoStore = require('connect-mongo')(session);
+const URI = process.env.MONGO_URI;
+const store = new MongoStore({ url: URI });
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false },
+  key: 'express.sid',
+  store: store
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+fccTesting(app); // For fCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+io.use(
+  passportSocketIo.authorize({
+    cookieParser: cookieParser,
+    key: 'express.sid',
+    secret: process.env.SESSION_SECRET,
+    store: store,
+    success: onAuthorizeSuccess,
+    fail: onAuthorizeFail
+  })
+);
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  routes(app, myDataBase);
+  auth(app, myDataBase);
+
+  let currentUsers = 0;
+  io.on('connection', (socket) => {
+    ++currentUsers;
+    io.emit('user count', currentUsers);
+    console.log('A user has connected');
+
+    socket.on('disconnect', () => {
+      console.log('A user has disconnected');
+      --currentUsers;
+      io.emit('user count', currentUsers);
+    });
+  });
+  
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+function onAuthorizeSuccess(data, accept) {
+  console.log('successful connection to socket.io');
+
+  accept(null, true);
+}
+
+function onAuthorizeFail(data, message, error, accept) {
+  if (error) throw new Error(message);
+  console.log('failed connection to socket.io:', message);
+  accept(null, false);
+}
+  
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
+});
+```
+## Announce New Users
+
+Many chat rooms are able to announce when a user connects or disconnects and then display that to all of the connected users in the chat. Seeing as though you already are emitting an event on connect and disconnect, you will just have to modify this event to support such a feature. The most logical way of doing so is sending 3 pieces of data with the event: the username of the user who connected/disconnected, the current user count, and if that username connected or disconnected.
+
+Change the event name to `'user'`, and pass an object along containing the fields `username`, `currentUsers`, and `connected` (to be `true` in case of connection, or `false` for disconnection of the user sent). Be sure to change both `'user count'` events and set the disconnect one to send `false` for the field `connected` instead of `true` like the event emitted on connect.
+```node.js
+io.emit('user', {
+  username: socket.request.user.username,
+  currentUsers,
+  connected: true
+});
+```
+Now your client will have all the necessary information to correctly display the current user count and announce when a user connects or disconnects! To handle this event on the client side we should listen for `'user'`, then update the current user count by using jQuery to change the text of `#num-users` to `'{NUMBER} users online'`, as well as append a `<li>` to the unordered list with id `messages` with `'{NAME} has {joined/left} the chat.'`.
+
+An implementation of this could look like the following:
+```node.js
+socket.on('user', data => {
+  $('#num-users').text(data.currentUsers + ' users online');
+  let message =
+    data.username +
+    (data.connected ? ' has joined the chat.' : ' has left the chat.');
+  $('#messages').append($('<li>').html('<b>' + message + '</b>'));
+});
+```
+
+***
+
+**client.js**
+```node.js
+$(document).ready(function () {
+  /* Global io */
+  let socket = io();
+
+  socket.on('user', (data) => {
+    $('#num-users').text(data.currentUsers + ' users online');
+    let message = data.username + (data.connected ? ' has joined the chat.' : ' has left the chat.');
+    $('#messages').append($('<li>').html('<b>' + message + '</b>'));
+  });
+
+  // Form submittion with new message in field with id 'm'
+  $('form').submit(function () {
+    let messageToSend = $('#m').val();
+    // Send message to server here?
+    $('#m').val('');
+    return false; // Prevent form submit from refreshing page
+  });
+});
+```
+
+**server.js**
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+const session = require('express-session');
+const passport = require('passport');
+const routes = require('./routes.js');
+const auth = require('./auth.js');
+
+const app = express();
+
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+const passportSocketIo = require('passport.socketio');
+const cookieParser = require('cookie-parser');
+const MongoStore = require('connect-mongo')(session);
+const URI = process.env.MONGO_URI;
+const store = new MongoStore({ url: URI });
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false },
+  key: 'express.sid',
+  store: store
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+fccTesting(app); // For fCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+io.use(
+  passportSocketIo.authorize({
+    cookieParser: cookieParser,
+    key: 'express.sid',
+    secret: process.env.SESSION_SECRET,
+    store: store,
+    success: onAuthorizeSuccess,
+    fail: onAuthorizeFail
+  })
+);
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  routes(app, myDataBase);
+  auth(app, myDataBase);
+
+  let currentUsers = 0;
+  io.on('connection', (socket) => {
+    ++currentUsers;
+    io.emit('user', {
+      username: socket.request.user.username,
+      currentUsers,
+      connected: true
+    });
+    console.log('A user has connected');
+    socket.on('disconnect', () => {
+      console.log('A user has disconnected');
+      --currentUsers;
+      io.emit('user', {
+        username: socket.request.user.username,
+        currentUsers,
+        connected: false
+      });
+    });
+  });
+  
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+function onAuthorizeSuccess(data, accept) {
+  console.log('successful connection to socket.io');
+
+  accept(null, true);
+}
+
+function onAuthorizeFail(data, message, error, accept) {
+  if (error) throw new Error(message);
+  console.log('failed connection to socket.io:', message);
+  accept(null, false);
+}
+  
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
+});
+```
+
+## Send and Display Chat Messages
+
+It's time you start allowing clients to send a chat message to the server to emit to all the clients! In your `client.js` file, you should see there is already a block of code handling when the message form is submitted.
+```node.js
+$('form').submit(function() {
+  /*logic*/
+});
+```
+Within the form submit code, you should emit an event after you define `messageToSend` but before you clear the text box `#m`. The event should be named `'chat message'` and the data should just be `messageToSend`.
+```node.js
+socket.emit('chat message', messageToSend);
+```
+Now, on your server, you should be listening to the socket for the event `'chat message'` with the data being named `message`. Once the event is received, it should emit the event `'chat message'` to all sockets using `io.emit`, sending a data object containing the `username` and `message`.
+
+In `client.js`, you should now listen for event `'chat message'` and, when received, append a list item to `#messages` with the username, a colon, and the message!
+
+At this point, the chat should be fully functional and sending messages across all clients!
+
+***
+
+**client.js**
+```node.js
+$(document).ready(function () {
+    /*global io*/
+    let socket = io();
+
+    socket.on('user', data => {
+        $('#num-users').text(data.currentUsers + ' users online');
+        let message =
+            data.username +
+            (data.connected ? ' has joined the chat.' : ' has left the chat.');
+        $('#messages').append($('<li>').html('<b>' + message + '</b>'));
+    });
+
+    socket.on('chat message', data => {
+        console.log('socket.on 1')
+        $('#messages').append($('<li>').text(`${data.username}: ${data.message}`));
+    })
+
+    // Form submittion with new message in field with id 'm'
+    $('form').submit(function () {
+        let messageToSend = $('#m').val();
+        //send message to server here?
+        socket.emit('chat message', messageToSend);
+        $('#m').val('');
+        return false; // prevent form submit from refreshing page
+    });
+});
+```
+
+**server.js**
+```node.js
+'use strict';
+require('dotenv').config();
+const express = require('express');
+const myDB = require('./connection');
+const fccTesting = require('./freeCodeCamp/fcctesting.js');
+const session = require('express-session');
+const passport = require('passport');
+const routes = require('./routes.js');
+const auth = require('./auth.js');
+
+const app = express();
+
+const http = require('http').createServer(app);
+const io = require('socket.io')(http);
+const passportSocketIo = require('passport.socketio');
+const cookieParser = require('cookie-parser');
+const MongoStore = require('connect-mongo')(session);
+const URI = process.env.MONGO_URI;
+const store = new MongoStore({ url: URI });
+
+app.set('view engine', 'pug');
+app.set('views', './views/pug');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: true,
+  saveUninitialized: true,
+  cookie: { secure: false },
+  key: 'express.sid',
+  store: store
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+fccTesting(app); // For fCC testing purposes
+app.use('/public', express.static(process.cwd() + '/public'));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+io.use(
+  passportSocketIo.authorize({
+    cookieParser: cookieParser,
+    key: 'express.sid',
+    secret: process.env.SESSION_SECRET,
+    store: store,
+    success: onAuthorizeSuccess,
+    fail: onAuthorizeFail
+  })
+);
+
+myDB(async client => {
+  const myDataBase = await client.db('database').collection('users');
+
+  routes(app, myDataBase);
+  auth(app, myDataBase);
+
+  let currentUsers = 0;
+  io.on('connection', (socket) => {
+    ++currentUsers;
+    io.emit('user', {
+      username: socket.request.user.username,
+      currentUsers,
+      connected: true
+    });
+    socket.on('chat message', (message) => {
+      io.emit('chat message', { username: socket.request.user.username, message });
+    });
+    console.log('A user has connected');
+    socket.on('disconnect', () => {
+      console.log('A user has disconnected');
+      --currentUsers;
+      io.emit('user', {
+        username: socket.request.user.username,
+        currentUsers,
+        connected: false
+      });
+    });
+  });
+  
+}).catch(e => {
+  app.route('/').get((req, res) => {
+    res.render('index', { title: e, message: 'Unable to connect to database' });
+  });
+});
+
+function onAuthorizeSuccess(data, accept) {
+  console.log('successful connection to socket.io');
+
+  accept(null, true);
+}
+
+function onAuthorizeFail(data, message, error, accept) {
+  if (error) throw new Error(message);
+  console.log('failed connection to socket.io:', message);
+  accept(null, false);
+}
+  
+const PORT = process.env.PORT || 3000;
+http.listen(PORT, () => {
+  console.log(`Listening on port ${PORT}`);
+});
+```
+
+
