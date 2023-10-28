@@ -722,7 +722,24 @@ const myDataBase = await client.db('database').collection('users');
 
 3. .collection('users'): 이 부분은 'users'라는 컬렉션(데이터 테이블과 유사한 개념)을 가리키는 코드입니다. MongoDB는 데이터를 컬렉션 단위로 구성하며, 이 코드는 'users' 컬렉션에 연결하려는 것을 나타냅니다.
 
-따라서 이 코드는 MongoDB 클라이언트를 사용하여 'database' 데이터베이스 내의 'users' 컬렉션을 가리키는 데이터베이스 객체를 가져온다고 해석할 수 있습니다.
+따라서 이 코드는 MongoDB 클라이언트를 사용하여 'database' 데이터베이스 내의 'users' 컬렉션을 가리키는 데이터베이스 객체를 가져온다고 해석할 수 있습니다.  
+
+***
+
+1. **const URI = process.env.MONGO_URI;**: 이 줄은 환경 변수(MONGO_URI)에서 MongoDB 연결 URI를 읽어와 URI 변수에 저장합니다. 이 URI는 MongoDB 서버에 연결하는 데 사용됩니다. 일반적으로 .env 파일에 저장된 환경 변수를 사용하며, 이렇게 함으로써 중요한 연결 정보를 숨길 수 있습니다.
+2. **const client = new MongoClient(URI, { useNewUrlParser: true, useUnifiedTopology: true });**: 이 줄은 MongoDB 클라이언트를 생성하고, 이 클라이언트를 사용하여 MongoDB 서버에 연결합니다. URI 변수에서 가져온 연결 URI와 함께 useNewUrlParser와 useUnifiedTopology 옵션을 전달합니다. useNewUrlParser는 MongoDB 드라이버의 새로운 URL 파싱 엔진을 사용하도록 지시하며, useUnifiedTopology는 MongoDB 드라이버의 새로운 토폴로지 엔진을 사용하도록 지시합니다.
+3. **await client.connect();**: 이 줄은 MongoDB 클라이언트를 사용하여 MongoDB 서버에 연결합니다. connect 메서드는 비동기로 호출되며 연결이 확립될 때까지 기다립니다.
+4. **const myDataBase = await client.db('database').collection('users');**: 이 줄은 연결된 MongoDB 서버에서 데이터베이스와 users 컬렉션에 액세스하기 위한 변수를 설정합니다. client.db('database')는 database라는 데이터베이스에 연결하고, collection('users')는 해당 데이터베이스 내의 users 컬렉션에 액세스합니다. 이후에 myDataBase 변수를 사용하여 users 컬렉션에 대한 데이터베이스 작업을 수행할 수 있습니다.
+
+***
+
+1. myDB호출
+2. connection.js의 main 비동기 함수 실행
+3. MongoDB서버에 연결하고, callback(client)실행 -> server.js로
+4. myDataBase에 문제 없으면, 이후 route와 serializerUser등 함수 실행되고, 에러 있으면 에러에 맞는 route 실행,
+
+즉, DB에 문제 없을 시에만 코드가 실행된다. 
+
 
 ## Authentication Strategies
 
