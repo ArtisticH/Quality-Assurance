@@ -434,6 +434,16 @@ OAuth는 외부 서비스 (예: GitHub)를 사용하여 사용자 인증 및 권
 - /auth/github 경로(route)는 Passport를 사용하여 'github' 전략을 인증하도록 호출해야 합니다. 즉, 사용자를 GitHub의 인증 페이지로 리디렉션하여 GitHub에서 로그인 및 권한 부여 프로세스를 수행하도록 합니다.
 - /auth/github/callback 경로(route)는 GitHub에서의 인증이 성공하면 /profile로 리디렉션하도록 설정해야 하며, 인증이 실패하면 /로 리디렉션하도록 설정해야 합니다.
 
+- **/auth/github 엔드포인트**:
+   - 처음에 사용자가 "GitHub으로 로그인" 버튼을 클릭하면 /auth/github 엔드포인트로 리디렉션됩니다.
+   - 여기서 passport.authenticate('github')는 GitHub에 대한 인증 요청을 시작하고, 사용자를 GitHub 로그인 페이지로 리디렉션합니다.
+- **/auth/github/callback 엔드포인트**:
+   - 사용자가 GitHub에서 로그인하고 권한을 부여하면, GitHub은 사용자를 /auth/github/callback 엔드포인트로 리디렉션합니다.
+   - 이 엔드포인트에서도 passport.authenticate('github')를 사용합니다. 이번에는 GitHub에서 받은 인증 코드를 처리하고, 사용자 정보를 가져옵니다. failureRedirect 옵션은 만약 인증에 실패하면 어디로 리디렉션할지를 지정합니다.
+ 
+
+요약하면, 두 가지 다른 엔드포인트가 다른 시점에 다른 동작을 수행하며, 각각의 엔드포인트에서 passport.authenticate('github') 함수가 중복으로 사용됩니다. 첫 번째 엔드포인트는 인증 요청을 시작하고, 두 번째 엔드포인트는 인증 결과를 처리합니다.
+
 ***
 
 **route.js**
