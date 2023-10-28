@@ -1043,7 +1043,25 @@ app.listen(PORT, () => {
 
 2. **function ensureAuthenticated(req, res, next)**: 이 미들웨어는 사용자가 로그인되었는지 확인하는 역할을 합니다. req.isAuthenticated() 메서드를 사용하여 현재 사용자가 인증되었는지를 확인하고, 인증되었을 경우 ***next()를 호출***하여 다음 라우팅 핸들러로 요청을 전달합니다. 이 미들웨어는 다음 라우팅 핸들러로 진행하기 전에 사용자 인증을 확인하고, 인증되지 않은 경우 리디렉션을 수행합니다.
 
-passport.authenticate은 인증 처리에 사용되며, ensureAuthenticated는 인증 상태를 확인하는 역할을 합니다.
+passport.authenticate은 인증 처리에 사용되며, ensureAuthenticated는 인증 상태를 확인하는 역할을 합니다.  
+
+***
+
+이 코드에서 done은 콜백 함수(callback function)로 사용되는 매개변수입니다. done 함수는 Passport.js와 같은 인증 미들웨어에서 사용되며, 로그인 시도나 인증 과정의 결과를 알려주는 데 사용됩니다.  
+
+```node.js
+done(error, user, info);
+```
+- error: 오류가 발생한 경우 오류 객체를 전달하며, 오류가 없는 경우 null을 전달합니다.
+- user: 로그인에 성공한 경우 인증된 사용자 객체를 전달하며, 로그인에 실패한 경우 false나 null을 전달합니다.
+- info: 추가 정보나 메시지를 전달하는 데 사용되며, 주로 실패한 경우에 사용됩니다.
+특히, done(null, user)는 로그인에 성공했음을 나타내며, done(null, false)는 로그인에 실패했음을 나타냅니다. done 함수가 호출되면 Passport.js는 이 정보를 기반으로 로그인 상태를 관리하고 다음 미들웨어나 라우트 핸들러로 이동합니다.
+
+done 함수는 Passport.js나 다른 인증 미들웨어에서 미리 정의된 함수로, 개발자가 직접 정의할 필요가 없습니다. Passport.js 및 인증 미들웨어는 done 함수를 제공하며, 이 함수를 사용하여 인증 및 로그인 프로세스를 처리합니다.
+
+개발자는 done 함수를 호출하여 인증 프로세스의 결과를 알립니다. done 함수에 전달하는 매개변수에 따라 Passport.js는 해당 결과를 처리하고 적절한 조치를 취하게 됩니다. 따라서 개발자가 직접 done 함수를 정의할 필요는 없으며, 미들웨어에서 제공된 done 함수를 사용하여 인증 프로세스를 완료합니다.  
+
+
 
 ## How to Put a Profile Together
 
