@@ -68,6 +68,37 @@ app.set 메서드는 Express.js 애플리케이션 설정을 위한 메서드입
 
 ***
 
+app.set('port', 3000)과 app.listen(3000, () => {})는 비슷한 기능을 수행하지만 약간의 차이가 있습니다.
+
+1. **app.set('port', 3000)**: 이 설정은 Express 애플리케이션에 포트 번호를 할당합니다. 이 포트 번호는 애플리케이션 설정 중 하나로, Express 애플리케이션에서 사용될 포트를 지정하는 용도로 사용됩니다. 이 설정만으로는 서버가 시작되지 않으며, 별도의 `app.listen()` 함수를 **호출하여 서버를 시작**해야 합니다.
+
+예를 들어:
+```node.js
+const express = require('express');
+const app = express();
+app.set('port', 3000);
+
+app.listen(app.get('port'), () => {
+  console.log(`Server is running on port ${app.get('port')}`);
+});
+```
+`app.get('port')`를 사용하여 설정된 포트 번호를 가져와서 `app.listen()` 함수에 전달합니다.
+
+2. **app.listen(3000, () => {})**: 이 함수는 Express 애플리케이션을 특정 포트(여기서는 3000)에서 바로 시작합니다. 따라서 `app.listen()`을 호출하면 서버가 지정된 포트에서 실행됩니다.
+
+예를 들어:
+```node.js
+const express = require('express');
+const app = express();
+
+app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});
+```
+주요 차이점은 `app.set('port', 3000)`을 사용하면 포트 설정을 따로 저장하고 `app.listen()`에서 그 값을 가져와서 서버를 시작해야 하지만, `app.listen(3000, () => {})`을 사용하면 한 번에 포트를 설정하고 서버를 시작할 수 있다는 것입니다. 두 가지 방법 모두 사용 가능하며 개발자의 선호나 코드 구조에 따라 선택할 수 있습니다.
+
+***
+
 📝 index.pug
 ```pug
 html
