@@ -446,6 +446,7 @@ const URI = process.env.MONGO_URI;
 const store = new MongoStore({ url: URI });
 ```
 Now we just have to tell Socket.IO to use it and set the options. Be sure this is added before the existing socket code and not in the existing connection listener. For your server, it should look like this:
+
 ```node.js
 io.use(
   passportSocketIo.authorize({
@@ -458,6 +459,24 @@ io.use(
   })
 );
 ```
+
+***
+
+1. **const MongoStore = require('connect-mongo')(session);**: 이 코드는 세션 데이터를 MongoDB에 저장하는데 사용되는 connect-mongo 모듈을 가져옵니다. connect-mongo 모듈은 Express 애플리케이션의 세션 데이터를 MongoDB에 지속적으로 저장하고 검색하는 데 도움이 됩니다.
+2. **const URI = process.env.MONGO_URI;**: MongoDB 서버의 연결 문자열(URI)를 환경 변수로부터 가져옵니다. 이 URI를 사용하여 MongoDB에 연결하고 세션 데이터를 저장합니다.
+3. **const store = new MongoStore({ url: URI });**: connect-mongo를 사용하여 MongoDB에 세션 데이터를 저장할 수 있도록 MongoStore 인스턴스를 생성합니다. url 옵션을 통해 MongoDB 서버에 연결할 URI를 지정합니다.
+4. **io.use(...)**: Socket.IO에서 미들웨어를 사용하여 요청 또는 연결을 처리할 수 있습니다. 이 부분은 *Passport와 Socket.IO를 연동*하기 위한 미들웨어를 설정하는 부분입니다.
+5. **passportSocketIo.authorize({ ... })**: passportSocketIo 모듈을 사용하여 *Socket.IO의 인증을 처리*합니다. 이 부분에서는 인증 관련 설정을 제공하며, 이를 통해 **세션 쿠키를 해석하고 사용자 인증을 수행**합니다.
+  - cookieParser: 세션 쿠키를 파싱하기 위해 사용되는 미들웨어.
+  - key: 세션 식별자 키. Express 세션 설정과 일치해야 합니다.
+  - secret: 세션 데이터를 암호화 및 복호화하는 데 사용되는 비밀 키.
+  - store: 세션 데이터를 저장하기 위한 스토어 (MongoDB에 저장).
+  - success: 인증이 성공했을 때 호출되는 콜백 함수.
+  - fail: 인증이 실패했을 때 호출되는 콜백 함수.
+이렇게 설정된 미들웨어를 사용하면 Socket.IO 연결 요청을 받을 때 사용자의 세션을 확인하고, 세션 정보를 통해 사용자를 인증하고 관련된 데이터를 가져올 수 있게 됩니다. Socket.IO를 통해 인증된 사용자와 관련된 작업을 수행할 수 있게 됩니다.
+
+***
+
 Note that configuring Passport authentication for Socket.IO is very similar to the way we configured the `session` middleware for the API. This is because they are meant to use the same authentication method — get the session id from a cookie and validate it.
 
 Previously, when we configured the `session` middleware, we didn't explicitly set the cookie name for session (`key`). This is because the `session` package was using the default value. Now that we've added another package which needs access to the same value from the cookies, we need to explicitly set the `key` value in both configuration objects.
