@@ -32,6 +32,21 @@ Note:`io()` works only when connecting to a socket hosted on the same url/server
 
 ***
 
+1. http: Node.js의 http 모듈을 사용하여 HTTP 서버를 생성하는 코드입니다. app은 Express.js 애플리케이션 객체로 가정됩니다. 이 코드는 **Express 애플리케이션을 HTTP 서버에 연결**하고 있습니다.
+2. io: Socket.IO를 사용하여 WebSocket 통신을 설정하고 있습니다. Socket.IO를 사용하면 실시간 양방향 통신을 지원할 수 있습니다.
+
+기존 코드에서 `app.listen`을 사용하면 Express 애플리케이션을 포트에 직접 바인딩하고 웹 서버를 시작하는 것이 일반적입니다. 하지만 이 코드에서는 이미 http를 통해 HTTP 서버를 만들었기 때문에 이 서버를 사용하여 리스닝해야 합니다. 이 변경을 통해 Express 애플리케이션은 http 서버를 통해 요청을 처리하게 되고, **Socket.IO 역시 이 서버를 통해 소켓 통신**을 할 수 있게 됩니다. 
+
+Express 애플리케이션을 HTTP 서버를 통해 처리하는 이유는 일반적으로 Express.js 애플리케이션은 HTTP 서버 위에서 동작하도록 설계되어 있기 때문입니다.
+
+기존에 `app.listen`를 사용하는 것은 *Express 애플리케이션을 직접 웹 서버로 만들어 요청을 처리*하는 방식입니다. 이렇게 하면 Express 애플리케이션은 *내부적으로 Node.js의 http 모듈을 사용*하여 서버를 만들고, 요청을 라우팅하며, 미들웨어를 적용합니다. 이것은 간단한 웹 애플리케이션을 개발할 때 편리한 방법입니다.
+
+그러나 Socket.IO와 같은 웹소켓 라이브러리를 사용할 때, **Express의 HTTP 서버에 직접적으로 연결하면 소켓 통신과 HTTP 요청을 모두 하나의 서버에서 처리할 수 있습니다. 이렇게하면 소켓과 HTTP 모두 동일한 포트와 도메인에서 작동하여 연결 및 보안 관리가 용이하며, 코드가 단순화됩니다.**
+
+따라서 http 서버를 만들고 Express 애플리케이션을 이 서버에 연결하는 것은 Express 애플리케이션과 Socket.IO를 함께 사용하는 경우 일반적인 방법입니다. 이렇게 하면 Express 애플리케이션과 소켓 통신을 하나의 서버에서 처리할 수 있으며, http.listen를 사용하여 이 서버를 시작합니다. 이렇게 하면 Express 애플리케이션과 Socket.IO 모두가 동일한 HTTP 서버를 공유하게 되어 더 효율적으로 동작합니다.
+
+***
+
 ```node.js
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
