@@ -646,6 +646,22 @@ socket.on('user', data => {
 
 ***
 
+Socket.IO에서의 연결과 인증은 서로 다른 개념입니다. 먼저 Socket.IO 연결(`io.on('connection', ...)`)은 클라이언트와 서버 간의 소켓 연결을 설정하고 실시간 통신을 처리하는 데 사용됩니다. 이 연결은 기본적으로 클라이언트가 서버에 접속하고 실시간 이벤트를 교환하는 데 사용됩니다.
+
+반면에 `io.use(passportSocketIo.authorize(...))` 코드는 Socket.IO에서의 인증 및 권한 부여를 다룹니다. 이 부분은 클라이언트의 연결을 허용하거나 거부하고, 연결이 성공적으로 이루어질 경우 사용자를 인증하며 연결이 거부될 경우 인증하지 않는 부분입니다. 이 인증은 주로 웹 애플리케이션에서 로그인한 사용자를 식별하고 해당 사용자에 대한 권한을 관리하기 위해 사용됩니다.
+
+Socket.IO는 웹 소켓 프로토콜을 기반으로 하지만, 기본적으로 클라이언트의 연결을 누구나 수락합니다. 그러나 인증을 통해 특정 사용자만 연결을 허용하고 해당 사용자의 신원을 확인할 수 있게 됩니다. 이는 보안 및 권한 부여에 중요합니다. 인증 없이 누구나 연결을 허용한다면 누구나 서버와 통신할 수 있고, 이는 보안 문제를 야기할 수 있습니다.
+
+따라서, `passportSocketIo.authorize`와 `io.use`를 사용하여 인증을 설정하는 것은 클라이언트의 연결을 안전하게 관리하고 로그인 사용자를 식별하기 위해 필요한 작업입니다. 인증은 쿠키를 사용할 때 또는 다른 인증 방법을 사용할 때 모두 중요합니다. 클라이언트가 연결되기 전에 인증 및 권한 부여를 수행하여 보안을 강화하고 로그인한 사용자의 데이터를 안전하게 처리할 수 있도록 합니다.  
+
+**즉, `io.use(passportSocketIo.authorize({...`코드를 입력한 순간 전에 로그인을 해서 세션 id를 쿠키로 부여받은 사람만 웹 소켓 통신이 가능하게 된다**  
+`io.use(passportSocketIo.authorize(...))` 코드는 Socket.IO에서의 연결을 인증하고 권한을 부여하기 위한 부분으로, 세션 기반의 사용자 인증을 통해 연결을 허용합니다. 이 코드를 사용하면 세션 ID가 쿠키로 제공된 사용자만 웹 소켓 통신을 가능하게 합니다.
+
+세션 ID가 쿠키로 제공되면, 인증 미들웨어는 해당 세션 ID를 검증하고 사용자의 식별 정보를 가져옵니다. 사용자의 식별 정보(예: 사용자 ID)를 통해 해당 사용자를 식별하고 권한을 확인할 수 있습니다. 이를 통해 로그인한 사용자만 웹 소켓 통신에 참여하거나 특정 권한을 가진 사용자만 특정 이벤트에 접근할 수 있도록 보안 및 권한 부여를 구현할 수 있습니다.
+
+따라서 `passportSocketIo.authorize`를 사용하면 로그인을 한 사용자 또는 세션 ID를 갖고 있는 사용자만 웹 소켓 통신에 참여할 수 있게 됩니다. 이것은 웹 소켓 통신을 보안하고 인증된 사용자만 서버와 통신하도록 하는 데 중요한 역할을 합니다.
+***
+
 **client.js**
 ```node.js
 $(document).ready(function () {
@@ -667,7 +683,28 @@ $(document).ready(function () {
   });
 });
 ```
+```javascript
+document.addEventListener('DOMContentLoaded', function () {
+  // Global io
+  let socket = io();
 
+  socket.on('user', function (data) {
+    document.getElementById('num-users').textContent = data.currentUsers + ' users online';
+    let message = data.username + (data.connected ? ' has joined the chat.' : ' has left the chat.');
+    let li = document.createElement('li');
+    li.innerHTML = '<b>' + message + '</b>';
+    document.getElementById('messages').appendChild(li);
+  });
+
+  // Form submission with new message in field with id 'm'
+  document.querySelector('form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    let messageToSend = document.getElementById('m').value;
+    // Send message to server here?
+    document.getElementById('m').value = '';
+  });
+});
+```
 **server.js**
 ```node.js
 'use strict';
@@ -820,6 +857,40 @@ $(document).ready(function () {
     });
 });
 ```
+```javascript
+document.addEventListener('DOMContentLoaded', function () {
+  // Global io
+  let socket = io();
+
+  socket.on('user', function (data) {
+    document.getElementById('num-users').textContent = data.currentUsers + ' users online';
+    let message =
+      data.username +
+      (data.connected ? ' has joined the chat.' : ' has left the chat.');
+    let li = document.createElement('li');
+    li.innerHTML = '<b>' + message + '</b>';
+    document.getElementById('messages').appendChild(li);
+  });
+
+  socket.on('chat message', function (data) {
+    console.log('socket.on 1');
+    let li = document.createElement('li');
+    li.textContent = data.username + ': ' + data.message;
+    document.getElementById('messages').appendChild(li);
+  });
+
+  // Form submission with new message in the field with id 'm'
+  document.querySelector('form').addEventListener('submit', function (event) {
+    event.preventDefault();
+    let messageToSend = document.getElementById('m').value;
+    // Send message to server here
+    socket.emit('chat message', messageToSend);
+    document.getElementById('m').value = '';
+  });
+});
+```
+
+- **폼 제출 방지**: 주어진 코드에서 event.preventDefault()는 폼 제출을 방지합니다. 폼 제출은 일반적으로 페이지를 다시 로드하거나 다른 동작을 수행하려는 브라우저의 기본 동작 중 하나입니다. 하지만 채팅 애플리케이션에서는 페이지를 다시 로드하지 않고도 실시간으로 메시지를 전송하려고 합니다. event.preventDefault()를 사용하면 이러한 기본 동작을 중지하고 추가 동작을 처리할 수 있습니다.
 
 **server.js**
 ```node.js
