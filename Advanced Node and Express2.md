@@ -595,6 +595,19 @@ Your authentication won't be successful yet, and it will actually throw an error
 
 ***
 
+passport.use를 사용하여 GitHub OAuth 2.0을 통합할 때, GitHubStrategy는 **GitHub에서 제공하는 OAuth 2.0 인증 프로세스를 처리**합니다. GitHubStrategy 내부 함수에 전달되는 매개 변수들의 역할은 다음과 같습니다:
+
+1. **accessToken**: 이것은 GitHub으로부터 발급받은 액세스 토큰입니다. 액세스 토큰은 사용자를 대신하여 GitHub API에 액세스할 때 사용됩니다. GitHub API 호출에 이 토큰을 함께 제공하여 사용자 데이터를 가져오거나 다른 GitHub 리소스에 액세스할 수 있습니다.
+
+2. **refreshToken**: OAuth 2.0에서는 리프레시 토큰이 선택 사항이며 GitHubStrategy에서 사용하지 않을 수 있습니다. 리프레시 토큰은 액세스 토큰이 만료되었을 때 새로운 액세스 토큰을 얻을 때 사용될 수 있는 토큰입니다. 그러나 일부 OAuth 2.0 흐름에서 리프레시 토큰이 발급되지 않을 수 있습니다.
+
+3. **profile**: 이 매개 변수는 GitHub 사용자 프로필에 관한 정보를 포함하는 객체입니다. 이 객체는 사용자의 GitHub 계정 정보를 제공하며 사용자의 이름, 이메일, 아바타 URL 등과 같은 정보를 포함할 수 있습니다. GitHubStrategy를 사용하여 사용자의 GitHub 정보를 가져올 때 이 객체를 통해 해당 정보에 액세스할 수 있습니다.
+
+4. **cb**: 이것은 콜백 함수입니다. GitHubStrategy 내부에서 인증 및 사용자 프로필 정보를 처리한 후, 이 콜백 함수를 호출하여 **결과를 반환**합니다. 콜백 함수는 일반적으로 사용자 정보와 함께 호출되며, **사용자 정보를 다루고 저장하는 로직**을 구현할 수 있습니다.
+
+예를 들어, GitHubStrategy를 사용하여 사용자가 웹 애플리케이션에 GitHub 계정으로 로그인하면 profile 매개 변수를 사용하여 사용자의 *GitHub 프로필 정보를 가져온 다음, 해당 정보를 데이터베이스에 저장하거나 로그인 로직을 처리할 수 있습니다.* 이렇게 사용자 정보를 처리하고 로직을 수행한 후에는 **cb 콜백 함수를 호출하여 결과를 반환**(Passport에게 사용자를 제공)하면 됩니다.
+***
+
 **auth.js**
 
 ```node.js
