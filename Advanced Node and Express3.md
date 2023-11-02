@@ -54,6 +54,10 @@ app.listen(port, callback)를 사용하면 Express 애플리케이션을 특정 
 
 ***
 
+[코딩애플](https://youtu.be/yXPCg5eupGM?feature=shared)  
+[노마드코더](https://youtu.be/5EhsjtBE7I4?feature=shared)
+***
+
 가장 먼저 처리해야 하는 것은 클라이언트로부터의 새로운 연결을 기다리는 것입니다. 'on' 키워드는 정확히 그 역할을 합니다 - 특정 이벤트를 기다립니다. 이 키워드는 2개의 인수가 필요합니다: 이벤트의 제목을 포함한 문자열과 데이터가 전달되는 함수입니다. 우리의 연결 리스너의 경우, 두 번째 인수에서 데이터를 정의하는 데 'socket'을 사용합니다. '소켓'은 연결된 개별 클라이언트를 나타냅니다.  
 
 ```node.js
