@@ -770,7 +770,7 @@ You should be able to login to your app now. Try it!
 - { upsert: true, new: true }: 옵션 객체로, 이 부분은 다음을 수행합니다.
   - upsert: true: 조건에 맞는 문서를 찾지 못하면 새 문서를 삽입합니다.
   - new: true: 업데이트된 문서를 반환하도록 설정합니다.
-- (err, doc) => { return cb(null, doc.value); }: MongoDB에서의 작업이 완료되면 콜백 함수가 호출됩니다. 이 콜백 함수는 오류 (err)와 업데이트된 문서 (doc)를 처리하고 Passport에 사용자 정보를 반환하기 위해 cb(null, doc.value)를 호출합니다. Passport는 이 정보를 사용자 세션으로 직렬화합니다.
+- (err, doc) => { return cb(null, doc.value); }: MongoDB에서의 작업이 완료되면 콜백 함수가 호출됩니다. 이 콜백 함수는 오류 (err)와 업데이트된 문서 (doc)를 처리하고 Passport에 사용자 정보를 반환하기 위해 cb(null, doc.value)를 호출합니다. ***Passport는 이 정보를 사용자 세션으로 직렬화합니다.***
 
 ***
 
