@@ -291,7 +291,7 @@ function ensureAuthenticated(req, res, next) {
 
 ## Communicate by Emitting
 
-Emit is the most common way of communicating you will use. When you emit something from the server to 'io', you send an event's name and data to all the connected sockets. A good example of this concept would be emitting the current count of connected users each time a new user connects!
+Emit is the most common way of communicating you will use. When you emit something from the server to 'io', you send an event's name and data to **all the connected sockets.** A good example of this concept would be emitting the current count of connected users **each time a new user connects**!
 
 Start by adding a variable to keep track of the users, just before where you are currently listening for connections.
 ```node.js
