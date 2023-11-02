@@ -405,6 +405,14 @@ Note: Just like `'disconnect'`, all other events that a socket can emit to the s
 
 ***
 
+```node.js
+// 클라이언트 측에서 소켓 연결 종료
+document.getElementById('logout-button').addEventListener('click', function () {
+  socket.disconnect(); // 소켓 연결 종료
+});
+```
+
+***
 **server.js**
 ```node.js
 myDB(async client => {
