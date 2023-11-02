@@ -101,7 +101,8 @@ let socket = io();
 ***
 
 **client.js**
-```node.js
+jquery버전
+```javascript.js
 $(document).ready(function () {
   /*global io*/
   let socket = io();
@@ -114,6 +115,23 @@ $(document).ready(function () {
     return false; // prevent form submit from refreshing page
   });
 });
+```
+javascript버전
+```node.js
+/*global io*/
+        let socket = io();
+
+        document.getElementById('send').addEventListener('click', function () {
+            var messageToSend = document.getElementById('m').value;
+            document.getElementById('m').value = '';
+            socket.emit('chat message', messageToSend);
+        });
+
+        socket.on('chat message', function (message) {
+            var li = document.createElement('li');
+            li.textContent = message;
+            document.getElementById('messages').appendChild(li);
+        });
 ```
 
 **server.js**
