@@ -606,6 +606,57 @@ passport.use를 사용하여 GitHub OAuth 2.0을 통합할 때, GitHubStrategy�
 4. **cb**: 이것은 콜백 함수입니다. GitHubStrategy 내부에서 인증 및 사용자 프로필 정보를 처리한 후, 이 콜백 함수를 호출하여 **결과를 반환**합니다. 콜백 함수는 일반적으로 사용자 정보와 함께 호출되며, **사용자 정보를 다루고 저장하는 로직**을 구현할 수 있습니다.
 
 예를 들어, GitHubStrategy를 사용하여 사용자가 웹 애플리케이션에 GitHub 계정으로 로그인하면 profile 매개 변수를 사용하여 사용자의 *GitHub 프로필 정보를 가져온 다음, 해당 정보를 데이터베이스에 저장하거나 로그인 로직을 처리할 수 있습니다.* 이렇게 사용자 정보를 처리하고 로직을 수행한 후에는 **cb 콜백 함수를 호출하여 결과를 반환**(Passport에게 사용자를 제공)하면 됩니다.
+
+***
+
+OAuth 2.0 인증 프로세스를 통해 사용자가 애플리케이션에 로그인하고 액세스 토큰을 얻은 후, 이 토큰을 사용하여 GitHub API를 호출하여 사용자 데이터를 가져올 수 있습니다. 다음은 이러한 프로세스를 간단히 설명하는 예제입니다:
+
+
+- 애플리케이션은 액세스 토큰을 사용하여 GitHub API에 요청을 보냅니다. 예를 들어, 사용자의 프로필 정보를 가져오기 위해 `/user` 엔드포인트를 호출할 수 있습니다.
+- GitHub API는 액세스 토큰을 확인하고 해당 사용자에게 연결된 데이터를 반환합니다.
+
+다음은 Node.js와 Axios를 사용하여 GitHub API에서 사용자의 프로필 정보를 가져오는 예제 코드입니다:
+```node.js
+const axios = require('axios');
+const accessToken = 'YOUR_ACCESS_TOKEN'; // 여기에 실제 액세스 토큰을 삽입합니다.
+
+axios.get('https://api.github.com/user', {
+  headers: {
+    Authorization: `token ${accessToken}`
+  }
+})
+  .then(response => {
+    const userData = response.data;
+    console.log(userData);
+  })
+  .catch(error => {
+    console.error('Error fetching user data:', error);
+  });
+```
+이 코드에서 accessToken 변수에는 액세스 토큰이 포함되어야 합니다. 그런 다음 Axios를 사용하여 GitHub API에 GET 요청을 보내고, 요청 헤더에 액세스 토큰을 함께 보냅니다. GitHub API는 이 토큰을 사용하여 사용자의 프로필 정보를 반환합니다.
+
+이것은 간단한 예제이며, 실제로는 사용자의 요청에 따라 더 복잡한 API 호출을 수행할 수 있습니다. 이렇게 GitHub API와 함께 액세스 토큰을 사용하면 사용자 데이터를 가져오거나 GitHub 리소스에 액세스할 수 있습니다.
+
+***
+
+Axios는 Node.js 및 브라우저에서 HTTP 클라이언트를 만들기 위한 JavaScript 라이브러리 중 하나입니다. Axios를 사용하면 HTTP 요청을 보내고 응답을 처리하는 것이 간단하고 효율적해집니다.
+
+
+1. 간편한 사용: Axios는 Promise를 사용하여 비동기 HTTP 요청을 처리하기 때문에 간단하게 사용할 수 있습니다. 이는 콜백 지옥 (Callback Hell)을 피하고 가독성 있는 코드를 작성할 수 있도록 도와줍니다.
+
+2. 브라우저 및 서버 모두 사용 가능: Axios는 브라우저와 Node.js 환경에서 모두 사용할 수 있습니다. 이로써 클라이언트 측 또는 서버 측 애플리케이션에서 일관된 방식으로 HTTP 요청을 수행할 수 있습니다.
+
+3. Promise 기반: Axios는 Promise를 기반으로 비동기 작업을 처리하므로 .then() 및 .catch()를 사용하여 요청 및 응답을 처리할 수 있습니다.
+
+4. 요청 및 응답 인터셉터: Axios는 요청과 응답을 인터셉트하고 수정할 수 있는 인터셉터(interceptors)를 지원합니다. 이를 통해 요청과 응답을 글로벌하게 처리하고 수정할 수 있습니다.
+
+5. 자동 JSON 파싱: Axios는 JSON 응답을 자동으로 파싱하여 JavaScript 객체로 반환합니다.
+
+6. 요청 취소: Axios는 요청 취소 기능을 제공하여 불필요한 네트워크 요청을 중단할 수 있습니다.
+
+7. HTTP 요청 메서드 지원: Axios는 GET, POST, PUT, DELETE, PATCH 및 다른 HTTP 요청 메서드를 지원합니다.
+
+Axios는 많은 웹 개발 프로젝트에서 널리 사용되며, API 호출 및 데이터 통신을 단순화하는데 도움이 됩니다. Node.js 또는 브라우저에서 웹 서버와 통신하거나 RESTful API와 상호 작용하는데 유용합니다.
 ***
 
 **auth.js**
