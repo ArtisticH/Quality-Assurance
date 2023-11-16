@@ -9,6 +9,16 @@ The following challenges will make use of the `chat.pug` file. So, in your `rout
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 ```
+
+**`require('http').createServer(app)`:**
+- createServer 메서드를 사용하여 웹 서버를 생성합니다.
+- createServer는 새로운 HTTP 서버 객체를 생성합니다.
+- app은 Express.js 애플리케이션 객체입니다. 이 애플리케이션은 웹 서버에서 동작하는 응용 프로그램을 의미합니다.
+
+**`const http = ...`:**
+- 이렇게 생성된 HTTP 서버 객체를 http 상수에 할당합니다.
+- 이제 이 http 객체를 사용하여 웹 서버를 제어하고 설정할 수 있습니다.
+
 Now that the http server is mounted on the express app, you need to listen from the *http* server. Change the line with `app.listen` to `http.listen`.
 
 The first thing needing to be handled is listening for a new connection from the client. The on keyword does just that- listen for a specific event. It requires 2 arguments: a string containing the title of the event that's emitted, and a function with which the data is passed through. In the case of our connection listener, use `socket` to define the data in the second argument. A socket is an individual client who is connected.
