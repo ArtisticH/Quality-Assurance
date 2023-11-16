@@ -535,6 +535,8 @@ It will log to the server console who has connected!
 
 Passport의 `serializeUser` 함수는 사용자 ID를 세션에 저장하는 역할만 하며, 어떻게 저장되는지는 세션 스토어에 따라 다를 수 있습니다. 세션 스토어 설정을 통해 어떤 데이터베이스를 사용할지 및 어떻게 저장할지를 결정하게 됩니다.  
 
+(**뇌피셜**: serializeUser는 세션 DB에 세션 ID를 저장하고, deserializeUser함수는 기본 데이터베이스에서 세션 ID를 통해 검색한 사용자 객체를 반환한다. 즉 둘이 사용하는 데이터베이스가 다르다!)
+
 ***
 
 **server.js**
