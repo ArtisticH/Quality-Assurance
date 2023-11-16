@@ -522,7 +522,13 @@ passport.serializeUser(function(user, done) {
 ```
 위의 코드에서 passport.authenticate('local', ...) 메서드는 사용자 인증이 성공하면 사용자 객체(user)를 인자로 받고, 이 객체가 passport.serializeUser로 전달됩니다.
 
-요약하면, passport.serializeUser 함수에서 user는 Passport가 로그인 후에 사용자 정보를 저장하는 데 사용되는 사용자 객체를 나타냅니다.
+요약하면, passport.serializeUser 함수에서 user는 Passport가 로그인 후에 사용자 정보를 저장하는 데 사용되는 사용자 객체를 나타냅니다. 
+
+- 여기서 `failureFlash: true`는 로그인 실패 시에 failureFlash 메시지를 활성화하는 옵션입니다. 이 옵션이 활성화되면, 로그인 시도가 실패할 때 해당 메시지가 `req.flash()`에 저장되어 이후 요청에서 사용할 수 있습니다.
+- `req.flash()`는 Express의 일종의 플래시 메시지 시스템입니다. 플래시 메시지는 현재 요청 및 다음 요청 간에 메시지를 저장하고 전달하는 데 사용됩니다. 일반적으로 로그인 실패와 같은 상황에서 오류 메시지를 사용자에게 표시하는 데 활용됩니다.
+- 따라서 `failureFlash: true`를 설정하면 로그인 실패 시에 플래시 메시지가 설정되어, 예를 들어 `/login` 경로로 리디렉션될 때 해당 메시지가 함께 전달됩니다. 실패한 로그인 시도에 대한 메시지를 사용자에게 표시하는 데 유용합니다.
+
+
 ***
 
 ```node.js
